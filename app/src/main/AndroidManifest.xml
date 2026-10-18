@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- NUEVO (Permisos): PASO 1 de 4 -> DECLARAR lo que la app necesita.
+         Sin esta línea, Android NI SIQUIERA muestra el diálogo al pedir el permiso. -->
+
+    <!-- NUEVO (Cámara): permiso PELIGROSO (dangerous): además de declararlo
+         hay que PEDIRLO al usuario mientras la app se ejecuta. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- NUEVO (Galería): permiso PELIGROSO para leer las fotos del teléfono (la galería).
+         Android 13+ (API 33) usa READ_MEDIA_IMAGES.
+         Android 12 o menos usa READ_EXTERNAL_STORAGE; maxSdkVersion="32" hace que
+         en equipos nuevos este permiso antiguo ni siquiera se declare. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- NUEVO (Cámara): la app USA la cámara, pero no es obligatoria (required="false").
+         Al declarar el permiso CAMERA, Google Play supondría que la cámara es obligatoria
+         y ocultaría la app en equipos sin cámara. Esta línea lo evita. -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MiRegistro">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.MiRegistro"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

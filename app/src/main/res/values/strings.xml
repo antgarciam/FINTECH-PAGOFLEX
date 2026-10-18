@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MiRegistro</string>
+
+    <string name="titulo_formulario">Crear cuenta</string>
+    <string name="banner_titulo">Únete a la comunidad</string>
+    <string name="banner_subtitulo">Completa tus datos en menos de un minuto</string>
+    <string name="seccion_datos">Datos personales</string>
+    <string name="seccion_preferencias">Preferencias</string>
+    <string name="campo_nombre">Nombre completo</string>
+    <string name="campo_correo">Correo electrónico</string>
+    <string name="campo_contrasena">Contraseña</string>
+    <string name="campo_ciudad">Ciudad</string>
+    <string name="etiqueta_nivel">Nivel de experiencia</string>
+    <string name="opcion_noticias">Recibir novedades por correo</string>
+    <string name="opcion_terminos">Acepto los términos y condiciones</string>
+    <string name="btn_limpiar">Limpiar</string>
+    <string name="btn_registrar">Registrarme</string>
+    <string name="registro_exitoso">¡Registro exitoso! Bienvenido/a, %1$s</string>
+
+    <string name="titulo_perfil">Mi perfil</string>
+    <string name="seccion_sobre_mi">Sobre mí</string>
+    <string name="seccion_intereses">Intereses</string>
+    <string name="btn_seguir">Seguir</string>
+    <string name="btn_siguiendo">Siguiendo</string>
+
+    <string name="saludo">Hola, %1$s</string>
+    <string name="menu_mi_perfil">Mi perfil</string>
+    <string name="menu_ver_usuarios">Ver usuarios</string>
+    <string name="titulo_usuarios">Usuarios registrados</string>
+
+    <string name="titulo_editar">Editar usuario</string>
+    <string name="menu_cerrar_sesion">Cerrar sesión</string>
+    <string name="dialogo_titulo">¿Cerrar sesión?</string>
+    <string name="dialogo_mensaje">Tendrás que registrarte de nuevo para ver tu perfil.</string>
+    <string name="dialogo_cancelar">Cancelar</string>
+    <string name="snackbar_sesion_cerrada">Sesión cerrada</string>
+
+    <string name="cd_banner">Ilustración de un formulario</string>
+    <string name="cd_portada">Paisaje de montañas al atardecer</string>
+    <string name="cd_avatar">Foto de perfil</string>
+    <string name="cd_mostrar_contrasena">Mostrar contraseña</string>
+    <string name="cd_ocultar_contrasena">Ocultar contraseña</string>
+    <string name="cd_volver">Volver</string>
+    <string name="cd_menu">Abrir menú</string>
+    <string name="cd_guardar">Guardar cambios</string>
+
+    <string name="campo_buscar">Buscar por nombre o correo</string>
+    <string name="lista_vacia">No se encontraron usuarios</string>
+
+    <string name="campo_rol">Rol</string>
+
+    <string name="cd_eliminar">Eliminar usuario</string>
+    <string name="dialogo_eliminar_titulo">¿Eliminar usuario?</string>
+    <string name="dialogo_eliminar_mensaje">Se eliminará a %1$s de la base de datos.</string>
+    <string name="btn_eliminar">Eliminar</string>
+
+    <!-- NUEVO (Cámara / Galería): botones para cambiar el avatar -->
+    <string name="btn_camara">Cámara</string>
+    <string name="btn_galeria">Galería</string>
+    <string name="texto_cambiar_foto">Cambia tu foto de perfil</string>
+
+    <!-- NUEVO (Permisos): mensajes cuando el usuario rechaza un permiso -->
+    <string name="permiso_camara_denegado">Sin permiso de cámara no se puede tomar la foto</string>
+    <string name="permiso_galeria_denegado">Sin permiso de fotos no se puede leer la galería</string>
+    <string name="btn_ajustes">Ajustes</string>
+</resources>
