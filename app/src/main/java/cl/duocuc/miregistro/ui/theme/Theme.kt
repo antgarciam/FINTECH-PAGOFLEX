@@ -13,7 +13,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-
 private val EsquemaClaro = lightColorScheme(
     primary = Primario,
     onPrimary = Blanco,
@@ -30,11 +29,11 @@ private val EsquemaClaro = lightColorScheme(
 )
 
 private val EsquemaOscuro = darkColorScheme(
-    primary = PrimarioClaro,
+    primary = Secundario,
     onPrimary = PrimarioOscuro,
     primaryContainer = PrimarioOscuro,
     onPrimaryContainer = PrimarioClaro,
-    secondary = Secundario,
+    secondary = Exito,
     onSecondary = Blanco,
     tertiary = Acento,
     onTertiary = Blanco,
@@ -43,6 +42,7 @@ private val EsquemaOscuro = darkColorScheme(
     surface = SuperficieOscura,
     onSurface = TextoClaro
 )
+
 
 private val Formas = Shapes(
     small = RoundedCornerShape(8.dp),

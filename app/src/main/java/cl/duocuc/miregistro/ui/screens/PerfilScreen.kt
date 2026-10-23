@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -36,6 +38,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -48,6 +52,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,10 +64,12 @@ import cl.duocuc.miregistro.model.PerfilUiState
 import cl.duocuc.miregistro.model.Usuario
 import cl.duocuc.miregistro.permisos.Permisos
 import cl.duocuc.miregistro.ui.components.AvatarCircular
+import cl.duocuc.miregistro.ui.components.BotonPrincipal
 import cl.duocuc.miregistro.ui.components.EtiquetaInteres
 import cl.duocuc.miregistro.ui.components.TarjetaEstadistica
 import cl.duocuc.miregistro.ui.components.TarjetaSeccion
 import cl.duocuc.miregistro.ui.theme.Dimens
+import cl.duocuc.miregistro.ui.theme.Exito
 import cl.duocuc.miregistro.ui.theme.MiRegistroTheme
 import cl.duocuc.miregistro.viewmodel.PerfilViewModel
 import kotlinx.coroutines.launch
@@ -71,13 +78,11 @@ import kotlinx.coroutines.launch
 fun PerfilScreen(
     usuario: Usuario?,
     onVolver: () -> Unit,
-    onFotoTomada: (Bitmap) -> Unit = {},       // NUEVO (Cámara): avisa la foto tomada
-    onImagenElegida: (Uri) -> Unit = {},       // NUEVO (Galería): avisa la imagen elegida
+    onFotoTomada: (Bitmap) -> Unit = {},
+    onImagenElegida: (Uri) -> Unit = {},
     viewModel: PerfilViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    // NUEVO (Permisos): Context = acceso a los servicios de Android (permisos, Ajustes...)
     val context = LocalContext.current
 
     // NUEVO (Permisos): Snackbar para avisar cuando el usuario rechaza un permiso.
@@ -175,7 +180,6 @@ fun PerfilScreen(
 
     PerfilContent(
         uiState = uiState.copy(perfil = perfil),
-        onAlternarSeguir = viewModel::onAlternarSeguir,
         onVolver = onVolver,
         foto = foto,                                   // NUEVO (Avatar)
         puedeCambiarFoto = usuario != null,            // NUEVO (Avatar): solo con sesión iniciada
@@ -198,7 +202,6 @@ fun PerfilScreen(
 @Composable
 fun PerfilContent(
     uiState: PerfilUiState,
-    onAlternarSeguir: () -> Unit,
     onVolver: () -> Unit = {},
     foto: ImageBitmap? = null,             // NUEVO (Avatar). "= ..." -> los @Preview no cambian
     puedeCambiarFoto: Boolean = false,     // NUEVO (Avatar)
@@ -208,114 +211,122 @@ fun PerfilContent(
 ) {
     val perfil = uiState.perfil
 
+    val nombreMostrar = perfil?.nombre ?: "Camila Rojas"
+    val correoMostrar = perfil?.descripcion ?: "c.rojas@duocuc.cl"
+    val rutOculto = "RUT: 15.*.*-3"
+    val indicadorCumplimiento = "91,7%"
+    val categoriaFintech = "Al día"
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(stringResource(R.string.titulo_perfil)) },
+                title = { Text("Mi perfil PagoFlex") },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_volver),
-                            contentDescription = stringResource(R.string.cd_volver)
+                            painter = painterResource(id = R.drawable.ic_volver),
+                            contentDescription = "Volver"
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },   // NUEVO (Permisos): aquí aparecen los avisos
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAlternarSeguir,
-                icon = {
-                    Icon(
-                        painter = painterResource(if (uiState.loSigo) R.drawable.ic_check else R.drawable.ic_seguir),
-                        contentDescription = null
-                    )
-                },
-                text = {
-                    Text(stringResource(if (uiState.loSigo) R.string.btn_siguiendo else R.string.btn_seguir))
-                },
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary
-            )
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
+
     ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            EncabezadoPerfil(foto = foto)          // NUEVO (Avatar): se le pasa la foto
-
-            Spacer(Modifier.height(Dimens.espacioChico))
-            Text(text = perfil.nombre, style = MaterialTheme.typography.titleLarge)
-            Text(
-                text = perfil.profesion,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = Dimens.espacioMini)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_ubicacion),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = perfil.ciudad,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = Dimens.espacioMini)
-                )
-            }
-
-            // NUEVO (Cámara / Galería): botones para cambiar la foto (solo con sesión)
-            if (puedeCambiarFoto) {
-                Text(
-                    text = stringResource(R.string.texto_cambiar_foto),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = Dimens.espacioMedio)
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico),
-                    modifier = Modifier.padding(top = Dimens.espacioChico)
-                ) {
-                    BotonConIcono(R.drawable.ic_camara, stringResource(R.string.btn_camara), onTomarFoto)
-                    BotonConIcono(R.drawable.ic_galeria, stringResource(R.string.btn_galeria), onAbrirGaleria)
-                }
-            }
-
-            Column(
-                modifier = Modifier.padding(Dimens.espacioPantalla),
+                .verticalScroll(rememberScrollState())
+                .padding(Dimens.espacioPantalla),
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
-                    TarjetaEstadistica(perfil.publicaciones.toString(), "Posts", Modifier.weight(1f))
-                    TarjetaEstadistica(perfil.seguidores.toString(), "Seguidores", Modifier.weight(1f))
-                    TarjetaEstadistica(perfil.siguiendo.toString(), "Siguiendo", Modifier.weight(1f))
-                }
 
-                TarjetaSeccion(titulo = stringResource(R.string.seccion_sobre_mi)) {
-                    Text(text = perfil.descripcion, style = MaterialTheme.typography.bodyMedium)
-                }
+        ) {
+            AvatarCircular(
+                imagen = R.drawable.avatar_camila_rojas,
+                descripcion = "Foto de perfil de usuario",
+                foto = foto,
+                modifier = Modifier.size(120.dp)
+            )
 
-                TarjetaSeccion(titulo = stringResource(R.string.seccion_intereses)) {
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
+            Text(
+                text = nombreMostrar,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = rutOculto,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
+                TextButton (onClick = onTomarFoto) {
+                    Text("Tomar Foto")
+                }
+                TextButton(onClick = onAbrirGaleria){
+                    Text("Abrir galería")
+                }
+            }
+
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(Dimens.espacioMedio),
+                        verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
                     ) {
-                        perfil.intereses.forEach { interes ->
-                            EtiquetaInteres(texto = interes)
-                        }
+                        Text(
+                            text = "Indicador de cumplimiento",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = indicadorCumplimiento,
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            color = Exito
+                        )
+
+                        Text(
+                            text = "Clasificación interna: $categoriaFintech",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
                 }
 
-                Spacer(Modifier.height(72.dp))
+
+            TarjetaSeccion(titulo = "Información del cliente") {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
+                ) {
+                    Text(text = "Correo electrónico: $correoMostrar", style = MaterialTheme.typography.bodyLarge)
+                    Text(text = "Rol asignado: R-01 (Usuario Final)", style = MaterialTheme.typography.bodyMedium)
+                }
             }
+
+            Spacer(modifier = Modifier.height(Dimens.espacioGrande))
+
+            BotonPrincipal(
+                texto = "Volver a mis cuentas",
+                onClick = onVolver,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -370,7 +381,7 @@ private val perfilPreview = Perfil(
 @Composable
 private fun PerfilPreview() {
     MiRegistroTheme {
-        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview), onAlternarSeguir = {})
+        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview))
     }
 }
 
@@ -378,6 +389,6 @@ private fun PerfilPreview() {
 @Composable
 private fun PerfilOscuroPreview() {
     MiRegistroTheme(darkTheme = true) {
-        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview, loSigo = true), onAlternarSeguir = {})
+        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview, loSigo = true))
     }
 }

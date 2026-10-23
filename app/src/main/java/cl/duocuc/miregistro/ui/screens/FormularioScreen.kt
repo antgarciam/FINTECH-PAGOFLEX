@@ -46,8 +46,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.duocuc.miregistro.R
@@ -191,23 +193,45 @@ fun FormularioContent(
     onCiudadSeleccionada: (String) -> Unit = {},
     usuarioActual: Usuario? = null,
     onAbrirMenu: () -> Unit = {},
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState()},
+    onVerMiPerfil: () -> Unit = {}
 ) {
+    var mostrarDetallePago by remember { mutableStateOf(false) }
+    var cuentaPagadaExitosa by remember { mutableStateOf(false) }
+
+    if (mostrarDetallePago) {
+        AlertDialog(
+            onDismissRequest = { mostrarDetallePago = false },
+            title = { Text("Detalle de Cuenta pendiente") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Empresa: Club Deportivo Los Halcones", fontWeight = FontWeight.Bold)
+                    Text("Concepto: Cuota social octubre (10/12)")
+                    Text("Monto original: $15.000")
+                    Text("Recargo por atraso: $2.000 (RN-03)", color = MaterialTheme.colorScheme.error)
+                    HorizontalDivider()
+                    Text("Total a pagar: $17.000", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    mostrarDetallePago = false
+                    cuentaPagadaExitosa = true // Simula la recaudación exitosa cambiando el estado local
+                }) { Text("Pagar cuenta ($17.000)") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDetallePago = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        if (usuarioActual != null) stringResource(R.string.saludo, usuarioActual.nombre)
-                        else stringResource(R.string.titulo_formulario)
-                    )
-                },
+                title = { Text("Tus pagos pendientes") }, // RNF-04: Tono Positivo y empático
                 navigationIcon = {
                     IconButton(onClick = onAbrirMenu) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_menu),
-                            contentDescription = stringResource(R.string.cd_menu)
-                        )
+                        Icon(painter = painterResource(R.drawable.ic_menu), contentDescription = "Menú")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -229,133 +253,111 @@ fun FormularioContent(
         ) {
             ImagenEncabezado(
                 imagen = R.drawable.banner_registro,
-                descripcion = stringResource(R.string.cd_banner),
-                titulo = stringResource(R.string.banner_titulo),
-                subtitulo = stringResource(R.string.banner_subtitulo)
+                descripcion = "Banner financiero PagoFlex",
+                titulo = "$ 535.000", // RF-02: Total consolidado del mes de Camila
+                subtitulo = "Próximo vencimiento: 05-10-2026"
             )
 
             Column(
                 modifier = Modifier.padding(Dimens.espacioPantalla),
                 verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
             ) {
-                TarjetaSeccion(titulo = stringResource(R.string.seccion_datos)) {
-                    CampoTexto(
-                        valor = uiState.nombre,
-                        onValorCambia = onNombreCambia,
-                        etiqueta = stringResource(R.string.campo_nombre),
-                        icono = R.drawable.ic_persona,
-                        error = uiState.errorNombre
-                    )
-                    CampoTexto(
-                        valor = uiState.correo,
-                        onValorCambia = onCorreoCambia,
-                        etiqueta = stringResource(R.string.campo_correo),
-                        icono = R.drawable.ic_correo,
-                        error = uiState.errorCorreo,
-                        tipoTeclado = KeyboardType.Email
-                    )
-                    CampoContrasena(
-                        valor = uiState.contrasena,
-                        onValorCambia = onContrasenaCambia,
-                        etiqueta = stringResource(R.string.campo_contrasena),
-                        visible = uiState.contrasenaVisible,
-                        onAlternarVisible = onAlternarVisibilidad,
-                        error = uiState.errorContrasena
-                    )
-
-                    var expandido by remember { mutableStateOf(false) }
-
-                    ExposedDropdownMenuBox(
-                        expanded = expandido,
-                        onExpandedChange = { expandido = it }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(Dimens.espacioMedio),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedTextField(
-                            value = uiState.ciudad,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.campo_ciudad)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandido) },
-                            shape = EstilosCampo.forma,
-                            colors = EstilosCampo.colores(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        Icon(
+                            painter = painterResource(R.drawable.ic_persona),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer
                         )
-                        ExposedDropdownMenu(
-                            expanded = expandido,
-                            onDismissRequest = { expandido = false }
-                        ) {
-                            uiState.ciudades.forEach { ciudad ->
-                                DropdownMenuItem(
-                                    text = { Text(ciudad) },
-                                    onClick = {
-                                        onCiudadSeleccionada(ciudad)
-                                        expandido = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                TarjetaSeccion(titulo = stringResource(R.string.seccion_preferencias)) {
-                    Text(
-                        text = stringResource(R.string.etiqueta_nivel),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    GrupoRadio(
-                        opciones = NivelExperiencia.entries,
-                        seleccionada = uiState.nivel,
-                        onSeleccionar = onNivelSeleccionado,
-                        textoDe = { it.etiqueta }
-                    )
-                    InterruptorConTexto(
-                        texto = stringResource(R.string.opcion_noticias),
-                        activado = uiState.recibirNoticias,
-                        onCambio = onNoticiasCambia
-                    )
-                }
-
-                Column {
-                    CasillaConTexto(
-                        texto = stringResource(R.string.opcion_terminos),
-                        marcado = uiState.aceptaTerminos,
-                        onCambio = onTerminosCambia
-                    )
-
-                    uiState.errorTerminos?.let { mensaje ->
                         Text(
-                            text = mensaje,
-                            color = MaterialTheme.colorScheme.error,
+                            text = "Tienes 1 compromiso de pago vencido.",
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(start = Dimens.espacioChico)
                         )
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)) {
-                    BotonSecundario(
-                        texto = stringResource(R.string.btn_limpiar),
-                        onClick = onLimpiar,
-                        modifier = Modifier.weight(1f)
-                    )
-                    BotonPrincipal(
-                        texto = stringResource(R.string.btn_registrar),
-                        onClick = onRegistrar,
-                        icono = R.drawable.ic_check,
-                        modifier = Modifier.weight(1f)
-                    )
+                TarjetaSeccion(titulo = "Cuentas del Mes") {
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)) {
+
+                        if (!cuentaPagadaExitosa) {
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(Dimens.espacioMedio)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Club Los Halcones", fontWeight = FontWeight.Bold)
+                                        Text("$17.000", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                                    }
+                                    Text("Cuota 10/12 · Vence: 05-10-2026 (Vencida)", style = MaterialTheme.typography.bodySmall)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    BotonPrincipal(
+                                        texto = "Ver detalle para pagar",
+                                        onClick = { mostrarDetallePago = true },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(Dimens.espacioMedio)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Plaza Oriente", fontWeight = FontWeight.Bold)
+                                    Text("$520.000", fontWeight = FontWeight.Bold)
+                                }
+                                Text("Arriendo octubre · Vence: 10-10-2026", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
                 }
 
-                if (uiState.registroExitoso) {
-                    MensajeExito(nombre = uiState.nombre)
+                if (cuentaPagadaExitosa) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = ExitoFondo, contentColor = Exito)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(Dimens.espacioMedio),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_check),
+                                contentDescription = null,
+                                tint = Exito
+                            )
+                            Text(
+                                text = "¡Pago exitoso! Comprobante generado: CPR-000402",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(start = Dimens.espacioChico)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(Dimens.espacioGrande))
+
+                BotonSecundario(
+                    texto = "Ir a mi perfil PagoFlex",
+                    onClick = onVerMiPerfil,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
 }
+
 
 @Composable
 private fun MensajeExito(nombre: String) {

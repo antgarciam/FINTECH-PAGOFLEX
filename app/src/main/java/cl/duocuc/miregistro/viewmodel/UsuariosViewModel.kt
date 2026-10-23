@@ -30,6 +30,33 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
     private val _usuarioActual = MutableStateFlow(db.buscarPorId(sesion.leer()))
     val usuarioActual: StateFlow<Usuario?> = _usuarioActual.asStateFlow()
 
+    init {
+        if (_usuarioActual.value == null) {
+            // Buscamos si Camila ya está en la BD por su nombre
+            val usuarioSimulado = db.buscarUsuarios("Camila Andrea").firstOrNull()
+
+            if (usuarioSimulado != null) {
+                _usuarioActual.value = usuarioSimulado
+                sesion.guardar(usuarioSimulado.id)
+            } else {
+                // Creamos a Camila adaptado estrictamente a tus campos reales
+                val camila = Usuario(
+                    id = 0L,
+                    nombre = "Camila Andrea Rojas Peña",
+                    correo = "crojas@correo.ejemplo",
+                    ciudad = "Maipú",
+                    rolId = 1L, // Rol R-01 Usuario Final
+                    rolNombre = "Usuario Final",
+                    avatar = null
+                )
+
+                val nuevoId = db.insertarUsuario(camila)
+                _usuarioActual.value = db.buscarPorId(nuevoId)
+                sesion.guardar(nuevoId)
+            }
+            recargar()
+        }
+    }
     private fun recargar() {
         val texto = _filtro.value.trim()
         _usuarios.value = if (texto.isEmpty()) db.listarUsuarios() else db.buscarUsuarios(texto)
