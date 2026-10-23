@@ -9,13 +9,94 @@ import cl.duocuc.miregistro.data.SesionPreferencias
 import cl.duocuc.miregistro.data.UsuarioDbHelper
 import cl.duocuc.miregistro.model.Rol
 import cl.duocuc.miregistro.model.Usuario
+import cl.duocuc.miregistro.model.Compromiso
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+
 class UsuariosViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = UsuarioDbHelper(application)
+
+
+    // Compromisos de prueba
+    private val _compromisos = MutableStateFlow(
+        listOf(
+            Compromiso(
+                id = 1L,
+                empresa = "Altos del Maipo",
+                concepto = "Crédito de consumo",
+                cuota = "1 de 6",
+                monto = 45000,
+                vencimiento = "01-10-2026",
+                estado = "Vencido",
+                folio = "PF-0001"
+            ),
+            Compromiso(
+                id = 2L,
+                empresa = "Altos del Maipo",
+                concepto = "Crédito de consumo",
+                cuota = "2 de 6",
+                monto = 45000,
+                vencimiento = "01-11-2026",
+                estado = "Pendiente",
+                folio = "PF-0002"
+            ),
+            Compromiso(
+                id = 3L,
+                empresa = "Empresa Ejemplo",
+                concepto = "Servicio mensual",
+                cuota = "1 de 3",
+                monto = 20000,
+                vencimiento = "25-10-2026",
+                estado = "Pendiente",
+                folio = "PF-0003"
+            )
+        )
+    )
+
+    val compromisos: StateFlow<List<Compromiso>> =
+        _compromisos.asStateFlow()
+
+    // RN-04: bloquear cuotas pendientes de la misma empresa
+    // cuando existe una cuota vencida de esa empresa.
+
+    fun puedePagar(compromiso: Compromiso): Boolean {
+        // Una cuota vencida puede pagarse para regularizar la deuda.
+        if (compromiso.estado.equals("Vencido", ignoreCase = true)) {
+            return true
+        }
+
+        // Solo se pueden pagar cuotas pendientes.
+        if (!compromiso.estado.equals("Pendiente", ignoreCase = true)) {
+            return false
+        }
+
+        // Revisa si existe una cuota vencida en la misma empresa.
+        val tieneCuotaVencida = _compromisos.value.any { otraCuota ->
+            otraCuota.empresa.equals(compromiso.empresa, ignoreCase = true) &&
+                    otraCuota.estado.equals("Vencido", ignoreCase = true)
+        }
+
+        return !tieneCuotaVencida
+    }
+
+    fun pagarCompromiso(compromiso: Compromiso) {
+        if (!puedePagar(compromiso)) {
+            return
+        }
+
+        _compromisos.value = _compromisos.value.map { cuota ->
+            if (cuota.id == compromiso.id) {
+                cuota.copy(estado = "Pagado")
+            } else {
+                cuota
+            }
+        }
+    }
+
+
 
     private val sesion = SesionPreferencias(application)
 

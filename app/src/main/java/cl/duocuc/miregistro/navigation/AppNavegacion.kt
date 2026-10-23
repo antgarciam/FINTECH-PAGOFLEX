@@ -15,6 +15,7 @@ import cl.duocuc.miregistro.ui.screens.FormularioScreen
 import cl.duocuc.miregistro.ui.screens.PerfilScreen
 import cl.duocuc.miregistro.ui.screens.UsuariosScreen
 import cl.duocuc.miregistro.viewmodel.UsuariosViewModel
+import cl.duocuc.miregistro.ui.screens.CompromisosScreen
 
 @Composable
 fun AppNavegacion() {
@@ -24,6 +25,7 @@ fun AppNavegacion() {
     val usuarioActual by usuariosViewModel.usuarioActual.collectAsStateWithLifecycle()
     val usuarios by usuariosViewModel.usuarios.collectAsStateWithLifecycle()
     val filtro by usuariosViewModel.filtro.collectAsStateWithLifecycle()
+    val compromisos by usuariosViewModel.compromisos.collectAsStateWithLifecycle()
 
     NavHost(navController = navController, startDestination = Ruta.Formulario.ruta) {
         composable(Ruta.Formulario.ruta) {
@@ -43,9 +45,11 @@ fun AppNavegacion() {
             PerfilScreen(
                 usuario = usuarioActual,
                 onVolver = { navController.navigateUp() },
+                onVerCompromisos = { navController.navigate(Ruta.Compromisos.ruta) },
                 // NUEVO (Cámara / Galería): la pantalla avisa; el ViewModel convierte y guarda en la BD
                 onFotoTomada = usuariosViewModel::cambiarAvatarDesdeCamara,
-                onImagenElegida = usuariosViewModel::cambiarAvatarDesdeGaleria
+                onImagenElegida = usuariosViewModel::cambiarAvatarDesdeGaleria,
+
             )
         }
 
@@ -59,6 +63,19 @@ fun AppNavegacion() {
                 onEliminar = usuariosViewModel::eliminar
             )
         }
+
+
+        composable(Ruta.Compromisos.ruta) {
+            CompromisosScreen(
+                compromisos = compromisos,
+                puedePagar = usuariosViewModel::puedePagar,
+                onVolver = { navController.navigateUp() },
+                onPagar = { compromiso ->
+                    usuariosViewModel.pagarCompromiso(compromiso)
+                }
+            )
+        }
+
 
         composable(
             route = Ruta.Editar.ruta,

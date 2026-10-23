@@ -78,6 +78,7 @@ import kotlinx.coroutines.launch
 fun PerfilScreen(
     usuario: Usuario?,
     onVolver: () -> Unit,
+    onVerCompromisos: () -> Unit = {},
     onFotoTomada: (Bitmap) -> Unit = {},
     onImagenElegida: (Uri) -> Unit = {},
     viewModel: PerfilViewModel = viewModel()
@@ -181,6 +182,7 @@ fun PerfilScreen(
     PerfilContent(
         uiState = uiState.copy(perfil = perfil),
         onVolver = onVolver,
+        onVerCompromisos = onVerCompromisos,
         foto = foto,                                   // NUEVO (Avatar)
         puedeCambiarFoto = usuario != null,            // NUEVO (Avatar): solo con sesión iniciada
         snackbarHostState = snackbarHostState,         // NUEVO (Permisos)
@@ -203,6 +205,7 @@ fun PerfilScreen(
 fun PerfilContent(
     uiState: PerfilUiState,
     onVolver: () -> Unit = {},
+    onVerCompromisos: () -> Unit = {},
     foto: ImageBitmap? = null,             // NUEVO (Avatar). "= ..." -> los @Preview no cambian
     puedeCambiarFoto: Boolean = false,     // NUEVO (Avatar)
     onTomarFoto: () -> Unit = {},          // NUEVO (Cámara)
@@ -321,6 +324,13 @@ fun PerfilContent(
             }
 
             Spacer(modifier = Modifier.height(Dimens.espacioGrande))
+
+            OutlinedButton(
+                onClick = onVerCompromisos,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Mis compromisos")
+            }
 
             BotonPrincipal(
                 texto = "Volver a mis cuentas",

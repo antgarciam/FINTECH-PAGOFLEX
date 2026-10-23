@@ -1,0 +1,242 @@
+
+package cl.duocuc.miregistro.ui.screens
+
+import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import cl.duocuc.miregistro.model.Compromiso
+import java.text.NumberFormat
+import java.util.Locale
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
+
+
+@Composable
+fun CompromisosScreen(
+    compromisos: List<Compromiso>,
+    puedePagar: (Compromiso) -> Boolean,
+    onVolver: () -> Unit,
+    onPagar: (Compromiso) -> Unit
+) {
+
+    var compromisoSeleccionado by remember {
+        mutableStateOf<Compromiso?>(null)
+    }
+
+    var mostrarConfirmacion by remember {
+        mutableStateOf(false)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Mis compromisos",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Text(
+            text = "Consulta tus cuotas y su estado de pago.",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
+        )
+
+        if (compromisos.isEmpty()) {
+            Text("No tienes compromisos registrados.")
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(
+                    items = compromisos,
+                    key = { it.id }
+                ) { compromiso ->
+
+                    val pagoPermitido = puedePagar(compromiso)
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 3.dp
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = compromiso.empresa,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            Text(
+                                text = compromiso.concepto,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+
+                            Text(
+                                text = "Cuota: ${compromiso.cuota}",
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+
+                            Text(
+                                text = "Monto: ${formatearMonto(compromiso.monto)}"
+                            )
+
+                            Text(
+                                text = "Vencimiento: ${compromiso.vencimiento}"
+                            )
+
+                            Text(
+                                text = "Folio: ${compromiso.folio}"
+                            )
+
+                            Text(
+                                text = "Estado: ${compromiso.estado}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = when (
+                                    compromiso.estado.lowercase()
+                                ) {
+                                    "vencido" ->
+                                        MaterialTheme.colorScheme.error
+
+                                    "pagado" ->
+                                        MaterialTheme.colorScheme.primary
+
+                                    else ->
+                                        MaterialTheme.colorScheme.onSurface
+                                },
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+
+                            if (
+                                compromiso.estado.equals(
+                                    "Pendiente",
+                                    ignoreCase = true
+                                ) && !pagoPermitido
+                            ) {
+                                Text(
+                                    text = "Pago bloqueado: tienes una cuota vencida en esta empresa.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.padding(top = 4.dp))
+
+                            Button(
+                                onClick = {
+                                    compromisoSeleccionado = compromiso
+                                    mostrarConfirmacion = true
+                                },
+                                enabled = pagoPermitido,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = when {
+                                        compromiso.estado.equals(
+                                            "Pagado",
+                                            ignoreCase = true
+                                        ) -> "Pagado"
+
+                                        !pagoPermitido -> "Pago bloqueado"
+
+                                        compromiso.estado.equals(
+                                            "Vencido",
+                                            ignoreCase = true
+                                        ) -> "Pagar deuda vencida"
+
+                                        else -> "Pagar"
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        OutlinedButton(
+            onClick = onVolver,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+        ) {
+            Text("Volver")
+        }
+    }
+
+    if (mostrarConfirmacion && compromisoSeleccionado != null) {
+        val compromiso = compromisoSeleccionado!!
+
+        AlertDialog(
+            onDismissRequest = {
+                mostrarConfirmacion = false
+                compromisoSeleccionado = null
+            },
+            title = {
+                Text("Confirmar pago")
+            },
+            text = {
+                Column {
+                    Text("Empresa: ${compromiso.empresa}")
+                    Text("Concepto: ${compromiso.concepto}")
+                    Text("Monto total: ${formatearMonto(compromiso.monto)}")
+                    Spacer(modifier = Modifier.padding(top = 8.dp))
+                    Text("¿Deseas confirmar este pago simulado?")
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onPagar(compromiso)
+                        mostrarConfirmacion = false
+                        compromisoSeleccionado = null
+                    }
+                ) {
+                    Text("Confirmar pago")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        mostrarConfirmacion = false
+                        compromisoSeleccionado = null
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+}
+
+private fun formatearMonto(monto: Int): String {
+    val formato = NumberFormat.getCurrencyInstance(
+        Locale("es", "CL")
+    )
+    return formato.format(monto)
+}
