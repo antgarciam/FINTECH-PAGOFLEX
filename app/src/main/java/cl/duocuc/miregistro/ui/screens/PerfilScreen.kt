@@ -81,7 +81,8 @@ fun PerfilScreen(
     onVerCompromisos: () -> Unit = {},
     onFotoTomada: (Bitmap) -> Unit = {},
     onImagenElegida: (Uri) -> Unit = {},
-    viewModel: PerfilViewModel = viewModel()
+    viewModel: PerfilViewModel = viewModel() ,
+    onVerHistorialPagos: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -183,6 +184,7 @@ fun PerfilScreen(
         uiState = uiState.copy(perfil = perfil),
         onVolver = onVolver,
         onVerCompromisos = onVerCompromisos,
+        onVerHistorialPagos = onVerHistorialPagos,
         foto = foto,                                   // NUEVO (Avatar)
         puedeCambiarFoto = usuario != null,            // NUEVO (Avatar): solo con sesión iniciada
         snackbarHostState = snackbarHostState,         // NUEVO (Permisos)
@@ -210,7 +212,8 @@ fun PerfilContent(
     puedeCambiarFoto: Boolean = false,     // NUEVO (Avatar)
     onTomarFoto: () -> Unit = {},          // NUEVO (Cámara)
     onAbrirGaleria: () -> Unit = {},       // NUEVO (Galería)
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }   // NUEVO (Permisos)
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },   // NUEVO (Permisos
+    onVerHistorialPagos: () -> Unit = {}
 ) {
     val perfil = uiState.perfil
 
@@ -331,6 +334,15 @@ fun PerfilContent(
             ) {
                 Text("Mis compromisos")
             }
+
+
+            OutlinedButton(
+                onClick = onVerHistorialPagos,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Historial de pagos")
+            }
+
 
             BotonPrincipal(
                 texto = "Volver a mis cuentas",

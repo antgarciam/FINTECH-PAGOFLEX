@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.FilterChip
 
 
 
@@ -47,6 +48,38 @@ fun CompromisosScreen(
         mutableStateOf(false)
     }
 
+    var filtroEstado by remember {
+        mutableStateOf("Todos")
+    }
+
+    val cantidadPagados = compromisos.count {
+        it.estado.equals("Pagado", ignoreCase = true)
+    }
+
+    val cantidadVencidos = compromisos.count {
+        it.estado.equals("Vencido", ignoreCase = true)
+    }
+
+    val cantidadPendientes = compromisos.count {
+        it.estado.equals("Pendiente", ignoreCase = true)
+    }
+
+    val compromisosFiltrados = when (filtroEstado) {
+        "Pagados" -> compromisos.filter {
+            it.estado.equals("Pagado", ignoreCase = true)
+        }
+
+        "Vencidos" -> compromisos.filter {
+            it.estado.equals("Vencido", ignoreCase = true)
+        }
+
+        "Pendientes" -> compromisos.filter {
+            it.estado.equals("Pendiente", ignoreCase = true)
+        }
+
+        else -> compromisos
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -63,15 +96,69 @@ fun CompromisosScreen(
             modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
         )
 
-        if (compromisos.isEmpty()) {
-            Text("No tienes compromisos registrados.")
+        Text(
+            text = "Filtrar compromisos",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filtroEstado == "Todos",
+                    onClick = { filtroEstado = "Todos" },
+                    label = { Text("Todos (${compromisos.size})") }
+                )
+
+                FilterChip(
+                    selected = filtroEstado == "Pagados",
+                    onClick = { filtroEstado = "Pagados" },
+                    label = { Text("Pagados ($cantidadPagados)") }
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filtroEstado == "Vencidos",
+                    onClick = { filtroEstado = "Vencidos" },
+                    label = { Text("Vencidos ($cantidadVencidos)") }
+                )
+
+                FilterChip(
+                    selected = filtroEstado == "Pendientes",
+                    onClick = { filtroEstado = "Pendientes" },
+                    label = { Text("Pendientes ($cantidadPendientes)") }
+                )
+            }
+        }
+
+        if (compromisosFiltrados.isEmpty()) {
+            Text(
+                text = if (compromisos.isEmpty()) {
+                    "No tienes compromisos registrados."
+                } else {
+                    "No tienes compromisos en este estado."
+                },
+                modifier = Modifier.padding(vertical = 16.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(
-                    items = compromisos,
+                    items = compromisosFiltrados,
                     key = { it.id }
                 ) { compromiso ->
 

@@ -13,12 +13,31 @@ import cl.duocuc.miregistro.model.Compromiso
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import cl.duocuc.miregistro.model.ComprobantePago
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.flow.asStateFlow
 
 
 class UsuariosViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = UsuarioDbHelper(application)
 
+    private val _comprobanteActual =
+        MutableStateFlow<ComprobantePago?>(null)
+
+    //Comprobante de pago del compromiso
+
+    val comprobanteActual: StateFlow<ComprobantePago?> =
+        _comprobanteActual.asStateFlow()
+
+    // historial de pagos
+    private val _historialPagos =
+        MutableStateFlow<List<ComprobantePago>>(emptyList())
+
+    val historialPagos: StateFlow<List<ComprobantePago>> =
+        _historialPagos.asStateFlow()
 
     // Compromisos de prueba
     private val _compromisos = MutableStateFlow(
@@ -56,6 +75,8 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         )
     )
 
+
+
     val compromisos: StateFlow<List<Compromiso>> =
         _compromisos.asStateFlow()
 
@@ -82,21 +103,50 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         return !tieneCuotaVencida
     }
 
-    fun pagarCompromiso(compromiso: Compromiso) {
+
+    fun pagarCompromiso(compromiso: Compromiso): ComprobantePago? {
         if (!puedePagar(compromiso)) {
-            return
+            return null
         }
 
+        val compromisoActual = _compromisos.value
+            .find { it.id == compromiso.id }
+            ?: return null
+
+        val fechaHora = SimpleDateFormat(
+            "dd-MM-yyyy HH:mm",
+            Locale("es", "CL")
+        ).format(Date())
+
+        val comprobante = ComprobantePago(
+            numero = "PF-PAGO-${System.currentTimeMillis()}",
+            fechaHora = fechaHora,
+            empresa = compromisoActual.empresa,
+            concepto = compromisoActual.concepto,
+            cuota = compromisoActual.cuota,
+            folioCompromiso = compromisoActual.folio,
+            monto = compromisoActual.monto,
+            recargoMora = 0,
+            totalPagado = compromisoActual.monto,
+            canal = "Aplicación PagoFlex",
+            estado = "Confirmado"
+        )
+
         _compromisos.value = _compromisos.value.map { cuota ->
-            if (cuota.id == compromiso.id) {
+            if (cuota.id == compromisoActual.id) {
                 cuota.copy(estado = "Pagado")
             } else {
                 cuota
             }
         }
+
+        _comprobanteActual.value = comprobante
+
+        _historialPagos.value =
+            _historialPagos.value + comprobante
+
+        return comprobante
     }
-
-
 
     private val sesion = SesionPreferencias(application)
 

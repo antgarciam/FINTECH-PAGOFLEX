@@ -16,6 +16,8 @@ import cl.duocuc.miregistro.ui.screens.PerfilScreen
 import cl.duocuc.miregistro.ui.screens.UsuariosScreen
 import cl.duocuc.miregistro.viewmodel.UsuariosViewModel
 import cl.duocuc.miregistro.ui.screens.CompromisosScreen
+import cl.duocuc.miregistro.ui.screens.ComprobantePagoScreen
+import cl.duocuc.miregistro.ui.screens.HistorialPagosScreen
 
 @Composable
 fun AppNavegacion() {
@@ -26,6 +28,8 @@ fun AppNavegacion() {
     val usuarios by usuariosViewModel.usuarios.collectAsStateWithLifecycle()
     val filtro by usuariosViewModel.filtro.collectAsStateWithLifecycle()
     val compromisos by usuariosViewModel.compromisos.collectAsStateWithLifecycle()
+    val comprobanteActual by usuariosViewModel.comprobanteActual.collectAsStateWithLifecycle()
+    val historialPagos by usuariosViewModel.historialPagos.collectAsStateWithLifecycle()
 
     NavHost(navController = navController, startDestination = Ruta.Formulario.ruta) {
         composable(Ruta.Formulario.ruta) {
@@ -46,6 +50,7 @@ fun AppNavegacion() {
                 usuario = usuarioActual,
                 onVolver = { navController.navigateUp() },
                 onVerCompromisos = { navController.navigate(Ruta.Compromisos.ruta) },
+                onVerHistorialPagos = { navController.navigate(Ruta.HistorialPagos.ruta) },
                 // NUEVO (Cámara / Galería): la pantalla avisa; el ViewModel convierte y guarda en la BD
                 onFotoTomada = usuariosViewModel::cambiarAvatarDesdeCamara,
                 onImagenElegida = usuariosViewModel::cambiarAvatarDesdeGaleria,
@@ -65,13 +70,38 @@ fun AppNavegacion() {
         }
 
 
+
         composable(Ruta.Compromisos.ruta) {
             CompromisosScreen(
                 compromisos = compromisos,
                 puedePagar = usuariosViewModel::puedePagar,
                 onVolver = { navController.navigateUp() },
                 onPagar = { compromiso ->
-                    usuariosViewModel.pagarCompromiso(compromiso)
+                    val comprobante = usuariosViewModel.pagarCompromiso(compromiso)
+
+                    if (comprobante != null) {
+                        navController.navigate(Ruta.Comprobante.ruta)
+                    }
+                }
+            )
+        }
+
+        composable(Ruta.Comprobante.ruta) {
+            comprobanteActual?.let { comprobante ->
+                ComprobantePagoScreen(
+                    comprobante = comprobante,
+                    onVolver = {
+                        navController.navigateUp()
+                    }
+                )
+            }
+        }
+
+        composable(Ruta.HistorialPagos.ruta) {
+            HistorialPagosScreen(
+                historial = historialPagos,
+                onVolver = {
+                    navController.navigateUp()
                 }
             )
         }
