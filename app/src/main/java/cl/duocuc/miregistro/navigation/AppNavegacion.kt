@@ -1,5 +1,6 @@
 package cl.duocuc.miregistro.navigation
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -18,6 +19,9 @@ import cl.duocuc.miregistro.viewmodel.UsuariosViewModel
 import cl.duocuc.miregistro.ui.screens.CompromisosScreen
 import cl.duocuc.miregistro.ui.screens.ComprobantePagoScreen
 import cl.duocuc.miregistro.ui.screens.HistorialPagosScreen
+import cl.duocuc.miregistro.ui.screens.LoginScreen
+import cl.duocuc.miregistro.ui.screens.ReporteProblema
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun AppNavegacion() {
@@ -31,7 +35,44 @@ fun AppNavegacion() {
     val comprobanteActual by usuariosViewModel.comprobanteActual.collectAsStateWithLifecycle()
     val historialPagos by usuariosViewModel.historialPagos.collectAsStateWithLifecycle()
 
-    NavHost(navController = navController, startDestination = Ruta.Formulario.ruta) {
+    NavHost(navController = navController, startDestination = Ruta.Login.ruta) {
+
+        composable(Ruta.Login.ruta) {
+            val context = LocalContext.current
+
+            LoginScreen(
+                onLoginExitoso = { rutIngresado, contraseniaIngresada ->
+                    // 1. Validamos formato de RUT chileno
+                    if (!usuariosViewModel.validarRutChileno(rutIngresado)) {
+                        Toast.makeText(context, "El RUT ingresado no tiene un formato válido.", Toast.LENGTH_SHORT).show()
+                        return@LoginScreen
+                    }
+
+                    // 2. Buscamos el usuario en la BD de la app
+                    val usuarioEncontrado = usuariosViewModel.buscarPorRut(rutIngresado)
+
+                    if (usuarioEncontrado != null) {
+                        // 3. VALIDACIÓN DE CONTRASEÑA REAL
+                        if (usuarioEncontrado.contrasena == contraseniaIngresada) {
+                            usuariosViewModel.iniciarSesion(rutIngresado)
+                            navController.navigate(Ruta.Formulario.ruta) {
+                                popUpTo(Ruta.Login.ruta) { inclusive = true }
+                            }
+                        } else {
+                            Toast.makeText(context, "Contraseña incorrecta. Intente nuevamente.", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "Usuario no encontrado. Utilice un RUT registrado.", Toast.LENGTH_LONG).show()
+                    }
+                },
+                onMostrarMensaje = { mensaje ->
+                    Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                },
+                onNavegarRecuperar = {
+                    navController.navigate("recuperar")
+                }
+            )
+        }
         composable(Ruta.Formulario.ruta) {
             FormularioScreen(
                 onRegistroExitoso = { usuario ->
@@ -41,7 +82,27 @@ fun AppNavegacion() {
                 usuarioActual = usuarioActual,
                 onVerMiPerfil = { navController.navigate(Ruta.Perfil.ruta) },
                 onVerUsuarios = { navController.navigate(Ruta.Usuarios.ruta) },
-                onCerrarSesion = { usuariosViewModel.cerrarSesion() }
+                onCerrarSesion = {
+                    usuariosViewModel.cerrarSesion()
+
+                    navController.navigate(Ruta.Login.ruta) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable("recuperar") {
+            cl.duocuc.miregistro.ui.screens.RecuperarContrasenaScreen(
+                onRestablecerExitoso = {
+                    navController.popBackStack() // Regresa al Login
+                },
+                onVolverAlLogin = {
+                    navController.popBackStack()
+                },
+                onActualizarClaveEnBD = { rut, nuevaClave ->
+                    usuariosViewModel.actualizarContrasena(rut, nuevaClave)
+                }
             )
         }
 
@@ -112,18 +173,25 @@ fun AppNavegacion() {
             arguments = listOf(navArgument("id") { type = NavType.LongType })
         ) { entrada ->
             val id = entrada.arguments?.getLong("id") ?: 0L
-            val usuario = remember(id) { usuariosViewModel.obtener(id) }
-            if (usuario != null) {
-                EditarScreen(
-                    usuario = usuario,
-                    roles = usuariosViewModel.roles,
-                    onVolver = { navController.navigateUp() },
-                    onGuardar = { editado ->
-                        usuariosViewModel.actualizar(editado)
-                        navController.navigateUp()
-                    }
+
+            val reporteSimulado = remember(id) {
+                ReporteProblema(
+                    numeroReporte = "REP-00${id}",
+                    folioCompromiso = "CP-2026-0106",
+                    rutUsuario = "12.476.318-5",
+                    motivo = "El monto no corresponde",
+                    comentario = "Nose porque me cobran $318.500.",
+                    estado = "Abierto"
                 )
             }
+
+            EditarScreen(
+                reporte = reporteSimulado,
+                onVolver = { navController.navigateUp() },
+                onGuardarResolucion = { respuesta, estadoCompromiso, estadoReporte ->
+                    navController.navigateUp()
+                }
+            )
         }
     }
 }

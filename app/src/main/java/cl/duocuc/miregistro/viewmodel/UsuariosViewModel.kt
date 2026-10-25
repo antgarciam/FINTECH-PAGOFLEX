@@ -249,4 +249,63 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         db.close()
         super.onCleared()
     }
+
+    fun validarRutChileno(rutCompleto: String): Boolean {
+        val rutLimpio = rutCompleto.replace(".", "").replace("-", "").trim().uppercase()
+        if (rutLimpio.length < 2) return false
+
+        val dvRecibido = rutLimpio.last()
+        val cuerpo = rutLimpio.substring(0, rutLimpio.length - 1)
+
+        return try {
+            var monto = 0
+            var multiplicador = 2
+            for ( i in cuerpo.length -1 downTo 0) {
+                monto += Character.getNumericValue(cuerpo[i]) * multiplicador
+                multiplicador = if (multiplicador == 7) 2 else multiplicador + 1
+            }
+            val dvEsperado = 11 - (monto % 11)
+            val dvStr = when (dvEsperado) {
+                11 -> "0"
+                10 -> "K"
+                else -> dvEsperado.toString()
+            }
+            dvStr == dvRecibido.toString()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    fun iniciarSesion(rut: String) {
+        val usuarioEncontrado = _usuarios.value.find { it.rut == rut }
+            ?: _usuarios.value.firstOrNull()
+        _usuarioActual.value = usuarioEncontrado
+    }
+
+    fun buscarPorRut(rutIngresado: String): Usuario? {
+        val rutLimpio = rutIngresado.replace(".", "").replace("-", "").trim()
+        return _usuarios.value.find { user ->
+            user.rut.replace(".", "").replace("-", "").trim().equals(rutLimpio, ignoreCase = true)
+        }
+    }
+
+    fun actualizarContrasena(rutIngresado: String, nuevaContrasena: String): Boolean {
+        // 1. Limpiamos el RUT ingresado (quitar puntos y guión)
+        val rutLimpioInput = rutIngresado.replace(".", "").replace("-", "").trim()
+
+        // 2. Buscamos si existe el usuario en la lista cargada
+        val usuario = _usuarios.value.find { user ->
+            user.rut.replace(".", "").replace("-", "").trim().equals(rutLimpioInput, ignoreCase = true)
+        } ?: return false
+
+        // 3. Actualizamos en la base de datos SQLite
+        val filasAfectadas = db.actualizarContrasena(usuario.rut, nuevaContrasena)
+
+        if (filasAfectadas > 0) {
+            recargar() // Refresca la lista de usuarios en memoria
+            return true
+        }
+
+        return false
+    }
 }

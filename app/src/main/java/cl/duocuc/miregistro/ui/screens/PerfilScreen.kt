@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.duocuc.miregistro.R
 import cl.duocuc.miregistro.data.ConvertidorImagen
+import cl.duocuc.miregistro.model.Compromiso
 import cl.duocuc.miregistro.model.Perfil
 import cl.duocuc.miregistro.model.PerfilUiState
 import cl.duocuc.miregistro.model.Usuario
@@ -69,7 +70,6 @@ import cl.duocuc.miregistro.ui.components.EtiquetaInteres
 import cl.duocuc.miregistro.ui.components.TarjetaEstadistica
 import cl.duocuc.miregistro.ui.components.TarjetaSeccion
 import cl.duocuc.miregistro.ui.theme.Dimens
-import cl.duocuc.miregistro.ui.theme.Exito
 import cl.duocuc.miregistro.ui.theme.MiRegistroTheme
 import cl.duocuc.miregistro.viewmodel.PerfilViewModel
 import kotlinx.coroutines.launch
@@ -77,26 +77,23 @@ import kotlinx.coroutines.launch
 @Composable
 fun PerfilScreen(
     usuario: Usuario?,
+    compromisos: List<Compromiso> = emptyList(),
     onVolver: () -> Unit,
     onVerCompromisos: () -> Unit = {},
     onFotoTomada: (Bitmap) -> Unit = {},
     onImagenElegida: (Uri) -> Unit = {},
-    viewModel: PerfilViewModel = viewModel() ,
+    viewModel: PerfilViewModel = viewModel(),
     onVerHistorialPagos: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // NUEVO (Permisos): Snackbar para avisar cuando el usuario rechaza un permiso.
-    // stringResource solo funciona en un @Composable: los textos se preparan aquí.
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val textoCamaraDenegada = stringResource(R.string.permiso_camara_denegado)
     val textoGaleriaDenegada = stringResource(R.string.permiso_galeria_denegado)
     val textoAjustes = stringResource(R.string.btn_ajustes)
 
-    // NUEVO (Permisos): PASO 4 (rechazo) -> avisar y ofrecer abrir Ajustes.
-    // Si el usuario rechazó 2 veces, Android ya no muestra el diálogo: solo queda Ajustes.
     fun avisarPermisoDenegado(mensaje: String) {
         scope.launch {
             val resultado = snackbarHostState.showSnackbar(
@@ -108,41 +105,24 @@ fun PerfilScreen(
         }
     }
 
-    // ------------------------------- CÁMARA -------------------------------
-
-    // NUEVO (Cámara): "launcher" = lanzador de OTRA app que nos devuelve un resultado.
-    // TakePicturePreview abre la app de cámara y entrega un Bitmap (o null si canceló).
-    // Como la app DECLARA el permiso CAMERA, Android exige que esté CONCEDIDO
-    // antes de abrir la cámara (si no, lanza SecurityException).
     val lanzadorCamara = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview()
     ) { foto: Bitmap? ->
         if (foto != null) onFotoTomada(foto)
     }
 
-    // NUEVO (Cámara): se llama SOLO con el permiso ya concedido.
-    // try/catch: si el equipo no tiene app de cámara, la app no se cae.
     fun abrirCamara() {
         try {
             lanzadorCamara.launch(null)
-        } catch (e: ActivityNotFoundException) {
-        }
+        } catch (e: ActivityNotFoundException) {}
     }
 
-    // NUEVO (Permisos): PASO 3 -> PEDIR. RequestPermission muestra el diálogo del sistema
-    // "¿Permitir que MiRegistro tome fotos y grabe videos?" y entrega true o false.
     val pedirPermisoCamara = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { concedido: Boolean ->
-        // NUEVO (Permisos): PASO 4 -> REACCIONAR a la respuesta del usuario
         if (concedido) abrirCamara() else avisarPermisoDenegado(textoCamaraDenegada)
     }
 
-    // ------------------------------- GALERÍA ------------------------------
-
-    // NUEVO (Galería): StartActivityForResult lanza un Intent cualquiera y devuelve
-    // el resultado. ACTION_PICK + tabla de imágenes = "abre la galería para elegir una foto".
-    // RESULT_OK = el usuario eligió algo;  data?.data = Uri de la imagen elegida.
     val lanzadorGaleria = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { resultado ->
@@ -150,26 +130,19 @@ fun PerfilScreen(
         if (resultado.resultCode == Activity.RESULT_OK && uri != null) onImagenElegida(uri)
     }
 
-    // NUEVO (Galería): se llama SOLO con el permiso de imágenes ya concedido.
     fun abrirGaleria() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         try {
             lanzadorGaleria.launch(intent)
-        } catch (e: ActivityNotFoundException) {
-        }
+        } catch (e: ActivityNotFoundException) {}
     }
 
-    // NUEVO (Permisos): PASO 3 -> PEDIR el permiso de imágenes
-    // (READ_MEDIA_IMAGES o READ_EXTERNAL_STORAGE según la versión: ver Permisos.IMAGENES)
     val pedirPermisoImagenes = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { concedido: Boolean ->
-        // NUEVO (Permisos): PASO 4 -> REACCIONAR
         if (concedido) abrirGaleria() else avisarPermisoDenegado(textoGaleriaDenegada)
     }
 
-    // NUEVO (Avatar): bytes de la BD -> Bitmap -> ImageBitmap (el tipo que usa Compose).
-    // remember(usuario?.avatar): se convierte solo cuando la foto CAMBIA, no en cada dibujo.
     val foto = remember(usuario?.avatar) {
         usuario?.avatar?.let { bytes -> ConvertidorImagen.aBitmap(bytes)?.asImageBitmap() }
     }
@@ -182,20 +155,19 @@ fun PerfilScreen(
 
     PerfilContent(
         uiState = uiState.copy(perfil = perfil),
+        usuario = usuario,
+        compromisos = compromisos,
         onVolver = onVolver,
         onVerCompromisos = onVerCompromisos,
         onVerHistorialPagos = onVerHistorialPagos,
-        foto = foto,                                   // NUEVO (Avatar)
-        puedeCambiarFoto = usuario != null,            // NUEVO (Avatar): solo con sesión iniciada
-        snackbarHostState = snackbarHostState,         // NUEVO (Permisos)
+        foto = foto,
+        puedeCambiarFoto = usuario != null,
+        snackbarHostState = snackbarHostState,
         onTomarFoto = {
-            // NUEVO (Permisos): PASO 2 -> VERIFICAR. ¿Ya tengo permiso? Uso la cámara.
-            // ¿No? Lo pido (PASO 3) y la respuesta llega a pedirPermisoCamara (PASO 4).
             if (Permisos.tiene(context, Permisos.CAMARA)) abrirCamara()
             else pedirPermisoCamara.launch(Permisos.CAMARA)
         },
         onAbrirGaleria = {
-            // NUEVO (Permisos): PASO 2 -> VERIFICAR el permiso de imágenes
             if (Permisos.tiene(context, Permisos.IMAGENES)) abrirGaleria()
             else pedirPermisoImagenes.launch(Permisos.IMAGENES)
         }
@@ -206,22 +178,56 @@ fun PerfilScreen(
 @Composable
 fun PerfilContent(
     uiState: PerfilUiState,
+    usuario: Usuario?, // CORREGIDO: Reemplazado '=' por ':'
+    compromisos: List<Compromiso> = emptyList(), // CORREGIDO: Reemplazado '=' por ':'
     onVolver: () -> Unit = {},
     onVerCompromisos: () -> Unit = {},
-    foto: ImageBitmap? = null,             // NUEVO (Avatar). "= ..." -> los @Preview no cambian
-    puedeCambiarFoto: Boolean = false,     // NUEVO (Avatar)
-    onTomarFoto: () -> Unit = {},          // NUEVO (Cámara)
-    onAbrirGaleria: () -> Unit = {},       // NUEVO (Galería)
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },   // NUEVO (Permisos
+    foto: ImageBitmap? = null,
+    puedeCambiarFoto: Boolean = false,
+    onTomarFoto: () -> Unit = {},
+    onAbrirGaleria: () -> Unit = {},
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onVerHistorialPagos: () -> Unit = {}
 ) {
     val perfil = uiState.perfil
 
-    val nombreMostrar = perfil?.nombre ?: "Camila Rojas"
-    val correoMostrar = perfil?.descripcion ?: "c.rojas@duocuc.cl"
-    val rutOculto = "RUT: 15.*.*-3"
-    val indicadorCumplimiento = "91,7%"
-    val categoriaFintech = "Al día"
+    val nombreMostrar = usuario?.nombre ?: perfil?.nombre ?: "Camila Rojas"
+    val correoMostrar = usuario?.correo ?: perfil?.descripcion ?: "c.rojas@duocuc.cl"
+
+    val rutOculto = remember(usuario?.correo) {
+        val rutReal = usuario?.correo ?: "15.834.207-3"
+        val partes = rutReal.split(".")
+        if (partes.size >= 3) {
+            val digitoVerificador = rutReal.substringAfter("-")
+            "RUT: ${partes[0]}.*.*-$digitoVerificador"
+        } else {
+            "RUT: 15.*.*-3"
+        }
+    }
+
+    // RN-10 y RN-11: Lógica matemática estricta para Indicador y Categoría Fintech
+    val (indicadorTexto, categoriaTexto, categoriaColor) = remember(compromisos) {
+        val validos = compromisos.filter {
+            !it.estado.equals("Anulado", ignoreCase = true) &&
+                    !it.estado.equals("En revisión", ignoreCase = true) &&
+                    !it.estado.equals("Pendiente", ignoreCase = true)
+        }
+
+        if (validos.size < 3) {
+            Triple("Historial insuficiente", "En camino", androidx.compose.ui.graphics.Color(0xFFE65100))
+        } else {
+            val pagadosATiempo = validos.count { it.estado.equals("Pagado", ignoreCase = true) }
+            val porcentaje = (pagadosATiempo.toFloat() / validos.size) * 100
+            val porcentajeFormateado = String.format(java.util.Locale.US, "%.1f%%", porcentaje)
+
+            val (cat, color) = when {
+                porcentaje >= 95.0f -> "Ejemplar" to androidx.compose.ui.graphics.Color(0xFF2E7D32)
+                porcentaje >= 80.0f -> "Al día" to androidx.compose.ui.graphics.Color(0xFF1565C0)
+                else -> "En camino" to androidx.compose.ui.graphics.Color(0xFFE65100)
+            }
+            Triple(porcentajeFormateado, cat, color)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -244,18 +250,15 @@ fun PerfilContent(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
-
     ) { innerPadding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(Dimens.espacioPantalla),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
-
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
         ) {
             AvatarCircular(
                 imagen = R.drawable.avatar_camila_rojas,
@@ -263,59 +266,51 @@ fun PerfilContent(
                 foto = foto,
                 modifier = Modifier.size(120.dp)
             )
-
             Text(
                 text = nombreMostrar,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-
             Text(
                 text = rutOculto,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
-                TextButton (onClick = onTomarFoto) {
+                TextButton(onClick = onTomarFoto) {
                     Text("Tomar Foto")
                 }
-                TextButton(onClick = onAbrirGaleria){
+                TextButton(onClick = onAbrirGaleria) {
                     Text("Abrir galería")
                 }
             }
-
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(
+                    modifier = Modifier.padding(Dimens.espacioMedio),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(Dimens.espacioMedio),
-                        verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
-                    ) {
-                        Text(
-                            text = "Indicador de cumplimiento",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = indicadorCumplimiento,
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
-                            color = Exito
-                        )
-
-                        Text(
-                            text = "Clasificación interna: $categoriaFintech",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
+                    Text(
+                        text = "Indicador de cumplimiento",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = indicadorTexto,
+                        style = if (indicadorTexto.contains("%")) MaterialTheme.typography.displayMedium else MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Black,
+                        color = categoriaColor
+                    )
+                    Text(
+                        text = "Clasificación interna: $categoriaTexto",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                 }
-
-
+            }
             TarjetaSeccion(titulo = "Información del cliente") {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -325,25 +320,19 @@ fun PerfilContent(
                     Text(text = "Rol asignado: R-01 (Usuario Final)", style = MaterialTheme.typography.bodyMedium)
                 }
             }
-
             Spacer(modifier = Modifier.height(Dimens.espacioGrande))
-
             OutlinedButton(
                 onClick = onVerCompromisos,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Mis compromisos")
             }
-
-
             OutlinedButton(
                 onClick = onVerHistorialPagos,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Historial de pagos")
             }
-
-
             BotonPrincipal(
                 texto = "Volver a mis cuentas",
                 onClick = onVolver,
@@ -352,8 +341,6 @@ fun PerfilContent(
         }
     }
 }
-
-// NUEVO (Cámara / Galería): botón con contorno, ícono y texto. Privado: solo se usa aquí.
 @Composable
 private fun BotonConIcono(icono: Int, texto: String, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick) {
@@ -362,9 +349,8 @@ private fun BotonConIcono(icono: Int, texto: String, onClick: () -> Unit) {
         Text(texto)
     }
 }
-
 @Composable
-private fun EncabezadoPerfil(foto: ImageBitmap? = null) {   // NUEVO (Avatar): recibe la foto
+private fun EncabezadoPerfil(foto: ImageBitmap? = null) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -383,11 +369,10 @@ private fun EncabezadoPerfil(foto: ImageBitmap? = null) {   // NUEVO (Avatar): r
             imagen = R.drawable.avatar_usuario,
             descripcion = stringResource(R.string.cd_avatar),
             modifier = Modifier.align(Alignment.BottomCenter),
-            foto = foto                                          // NUEVO (Avatar)
+            foto = foto
         )
     }
 }
-
 private val perfilPreview = Perfil(
     nombre = "Camila Rojas",
     profesion = "Desarrolladora móvil",
@@ -398,19 +383,17 @@ private val perfilPreview = Perfil(
     publicaciones = 24,
     intereses = listOf("Kotlin", "Compose", "Diseño UI")
 )
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun PerfilPreview() {
     MiRegistroTheme {
-        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview))
+        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview), usuario = null)
     }
 }
-
 @Preview(showBackground = true, showSystemUi = true, name = "Modo oscuro")
 @Composable
 private fun PerfilOscuroPreview() {
     MiRegistroTheme(darkTheme = true) {
-        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview, loSigo = true))
+        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview, loSigo = true), usuario = null)
     }
 }
