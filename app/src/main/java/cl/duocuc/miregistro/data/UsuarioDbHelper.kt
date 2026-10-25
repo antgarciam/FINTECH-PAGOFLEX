@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import cl.duocuc.miregistro.model.Rol
 import cl.duocuc.miregistro.model.Usuario
+import cl.duocuc.miregistro.model.Compromiso
+import cl.duocuc.miregistro.model.ComprobantePago
 
 class UsuarioDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
@@ -14,7 +16,7 @@ class UsuarioDbHelper(context: Context) :
     companion object {
         private const val NOMBRE_BD = "miregistro.db"
         // Versión 4: incluye avatar, RUT y contraseña
-        private const val VERSION_BD = 4
+        private const val VERSION_BD = 7
 
         private const val TABLA_ROLES = "roles"
         private const val ROL_ID = "id_rol"
@@ -46,6 +48,49 @@ class UsuarioDbHelper(context: Context) :
                     "$USU_AVATAR BLOB, " +
                     "$USU_ROL INTEGER NOT NULL REFERENCES $TABLA_ROLES($ROL_ID))"
 
+        private const val TABLA_COMPROMISOS = "compromisos"
+        private const val SQL_CREAR_COMPROMISOS =
+            """
+            CREATE TABLE compromisos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            empresa TEXT NOT NULL,
+            concepto TEXT NOT NULL,
+            cuota TEXT NOT NULL,
+            monto INTEGER NOT NULL,
+            vencimiento TEXT NOT NULL,
+            estado TEXT NOT NULL,
+            folio TEXT NOT NULL,
+            FOREIGN KEY (usuario_id)
+            REFERENCES usuarios(id_usuario)
+            ON DELETE CASCADE
+            )
+            """
+
+        private const val TABLA_PAGOS = "pagos"
+
+        private const val SQL_CREAR_PAGOS =
+            """
+            CREATE TABLE pagos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL,
+            numero TEXT NOT NULL,
+            fecha_hora TEXT NOT NULL,
+            empresa TEXT NOT NULL,
+            concepto TEXT NOT NULL,
+            cuota TEXT NOT NULL,
+            folio_compromiso TEXT NOT NULL,
+            monto INTEGER NOT NULL,
+            recargo_mora INTEGER NOT NULL,
+             total_pagado INTEGER NOT NULL,
+             canal TEXT NOT NULL,
+            estado TEXT NOT NULL,
+            FOREIGN KEY (usuario_id)
+            REFERENCES usuarios(id_usuario)
+            ON DELETE CASCADE
+            )
+            """
+
         private const val SQL_AGREGAR_AVATAR =
             "ALTER TABLE $TABLA_USUARIOS ADD COLUMN $USU_AVATAR BLOB"
 
@@ -64,7 +109,7 @@ class UsuarioDbHelper(context: Context) :
                     "('Camila Andrea Rojas Peña', 'crojas@correo.ejemplo', '15.834.207-3', '123456', 'Maipú', 1), " +
                     "('Luis Muñoz', 'lmunoz@correo.ejemplo', '12.476.318-5', '123456', 'Santiago', 1), " +
                     "('Rosa Contreras', 'rcontreras@correo.ejemplo', '6.893.541-5', '123456', 'Valparaíso', 1), " +
-                    "('Soporte PagoFlex', 'soporte@pagoflex.cl', '9.999.999-9', 'admin123', 'Providencia', 2)"
+                    "('Soporte PagoFlex', 'soporte@pagoflex.cl', '6.666.666-2', 'admin123', 'Providencia', 2)"
 
         private const val SQL_SELECT_USUARIOS =
             "SELECT u.*, r.$ROL_NOMBRE AS $ROL_NOMBRE " +
@@ -82,20 +127,238 @@ class UsuarioDbHelper(context: Context) :
         db.execSQL(SQL_CREAR_USUARIOS)
         db.execSQL(SQL_PRECARGAR_ROLES)
         db.execSQL(SQL_PRECARGAR_USUARIOS)
+        db.execSQL(SQL_CREAR_COMPROMISOS)
+        db.execSQL(SQL_CREAR_PAGOS)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+
+
+    override fun onUpgrade(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        newVersion: Int
+    ) {
         if (oldVersion < 2) {
             db.execSQL(SQL_AGREGAR_AVATAR)
         }
+
         if (oldVersion < 3) {
             db.execSQL(SQL_AGREGAR_RUT)
         }
+
         if (oldVersion < 4) {
             db.execSQL(SQL_AGREGAR_CONTRASENA)
         }
+
+        if (oldVersion < 5) {
+            db.execSQL(
+                """
+            UPDATE usuarios
+            SET rut = '6.666.666-2'
+            WHERE correo = 'soporte@pagoflex.cl'
+            """.trimIndent()
+            )
+        }
+
+        if (oldVersion < 6) {
+            val valores = ContentValues().apply {
+                put(USU_NOMBRE, "Soporte PagoFlex")
+                put(USU_CORREO, "soporte@pagoflex.cl")
+                put(USU_RUT, "6.666.666-2")
+                put(USU_CONTRASENA, "admin123")
+                put(USU_CIUDAD, "Providencia")
+                put(USU_ROL, 2)
+            }
+
+            val filasActualizadas = db.update(
+                TABLA_USUARIOS,
+                valores,
+                "$USU_CORREO = ?",
+                arrayOf("soporte@pagoflex.cl")
+            )
+
+            if (filasActualizadas == 0) {
+                db.insert(TABLA_USUARIOS, null, valores)
+            }
+        }
+
+        if (oldVersion < 7) {
+            db.execSQL(SQL_CREAR_COMPROMISOS)
+            db.execSQL(SQL_CREAR_PAGOS)
+        }
     }
 
+
+    fun listarCompromisos(usuarioId: Long): List<Compromiso> {
+        val lista = mutableListOf<Compromiso>()
+
+        readableDatabase.rawQuery(
+            """
+        SELECT * FROM compromisos
+        WHERE usuario_id = ?
+        ORDER BY id
+        """.trimIndent(),
+            arrayOf(usuarioId.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                lista.add(
+                    Compromiso(
+                        id = cursor.getLong(cursor.getColumnIndexOrThrow("id")),
+                        empresa = cursor.getString(cursor.getColumnIndexOrThrow("empresa")),
+                        concepto = cursor.getString(cursor.getColumnIndexOrThrow("concepto")),
+                        cuota = cursor.getString(cursor.getColumnIndexOrThrow("cuota")),
+                        monto = cursor.getInt(cursor.getColumnIndexOrThrow("monto")),
+                        vencimiento = cursor.getString(cursor.getColumnIndexOrThrow("vencimiento")),
+                        estado = cursor.getString(cursor.getColumnIndexOrThrow("estado")),
+                        folio = cursor.getString(cursor.getColumnIndexOrThrow("folio"))
+                    )
+                )
+            }
+        }
+
+        return lista
+    }
+
+    fun crearCompromisosIniciales(usuarioId: Long) {
+        val db = writableDatabase
+
+        val cursor = db.rawQuery(
+            "SELECT COUNT(*) FROM compromisos WHERE usuario_id = ?",
+            arrayOf(usuarioId.toString())
+        )
+
+        val yaTieneCompromisos = cursor.use {
+            it.moveToFirst() && it.getInt(0) > 0
+        }
+
+        if (yaTieneCompromisos) return
+
+        val ejemplos = listOf(
+            Compromiso(
+                id = 0L,
+                empresa = "Altos del Maipo",
+                concepto = "Crédito de consumo",
+                cuota = "1 de 6",
+                monto = 45000,
+                vencimiento = "01-10-2026",
+                estado = "Vencido",
+                folio = "PF-0001"
+            ),
+            Compromiso(
+                id = 0L,
+                empresa = "Altos del Maipo",
+                concepto = "Crédito de consumo",
+                cuota = "2 de 6",
+                monto = 45000,
+                vencimiento = "01-11-2026",
+                estado = "Pendiente",
+                folio = "PF-0002"
+            ),
+            Compromiso(
+                id = 0L,
+                empresa = "Empresa Ejemplo",
+                concepto = "Servicio mensual",
+                cuota = "1 de 3",
+                monto = 20000,
+                vencimiento = "25-10-2026",
+                estado = "Pendiente",
+                folio = "PF-0003"
+            )
+        )
+
+        ejemplos.forEach { compromiso ->
+            val valores = ContentValues().apply {
+                put("usuario_id", usuarioId)
+                put("empresa", compromiso.empresa)
+                put("concepto", compromiso.concepto)
+                put("cuota", compromiso.cuota)
+                put("monto", compromiso.monto)
+                put("vencimiento", compromiso.vencimiento)
+                put("estado", compromiso.estado)
+                put("folio", compromiso.folio)
+            }
+
+            db.insert("compromisos", null, valores)
+        }
+    }
+
+    fun actualizarEstadoCompromiso(
+        usuarioId: Long,
+        compromisoId: Long,
+        nuevoEstado: String
+    ): Boolean {
+        val valores = ContentValues().apply {
+            put("estado", nuevoEstado)
+        }
+
+        return writableDatabase.update(
+            "compromisos",
+            valores,
+            "id = ? AND usuario_id = ?",
+            arrayOf(compromisoId.toString(), usuarioId.toString())
+        ) > 0
+    }
+
+    fun insertarPago(
+        usuarioId: Long,
+        comprobante: ComprobantePago
+    ): Long {
+        val valores = ContentValues().apply {
+            put("usuario_id", usuarioId)
+            put("numero", comprobante.numero)
+            put("fecha_hora", comprobante.fechaHora)
+            put("empresa", comprobante.empresa)
+            put("concepto", comprobante.concepto)
+            put("cuota", comprobante.cuota)
+            put("folio_compromiso", comprobante.folioCompromiso)
+            put("monto", comprobante.monto)
+            put("recargo_mora", comprobante.recargoMora)
+            put("total_pagado", comprobante.totalPagado)
+            put("canal", comprobante.canal)
+            put("estado", comprobante.estado)
+        }
+
+        return writableDatabase.insert("pagos", null, valores)
+    }
+
+    fun listarPagos(usuarioId: Long): List<ComprobantePago> {
+        val lista = mutableListOf<ComprobantePago>()
+
+        readableDatabase.rawQuery(
+            """
+        SELECT * FROM pagos
+        WHERE usuario_id = ?
+        ORDER BY id DESC
+        """.trimIndent(),
+            arrayOf(usuarioId.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                lista.add(
+                    ComprobantePago(
+                        numero = cursor.getString(cursor.getColumnIndexOrThrow("numero")),
+                        fechaHora = cursor.getString(cursor.getColumnIndexOrThrow("fecha_hora")),
+                        empresa = cursor.getString(cursor.getColumnIndexOrThrow("empresa")),
+                        concepto = cursor.getString(cursor.getColumnIndexOrThrow("concepto")),
+                        cuota = cursor.getString(cursor.getColumnIndexOrThrow("cuota")),
+                        folioCompromiso = cursor.getString(
+                            cursor.getColumnIndexOrThrow("folio_compromiso")
+                        ),
+                        monto = cursor.getInt(cursor.getColumnIndexOrThrow("monto")),
+                        recargoMora = cursor.getInt(
+                            cursor.getColumnIndexOrThrow("recargo_mora")
+                        ),
+                        totalPagado = cursor.getInt(
+                            cursor.getColumnIndexOrThrow("total_pagado")
+                        ),
+                        canal = cursor.getString(cursor.getColumnIndexOrThrow("canal")),
+                        estado = cursor.getString(cursor.getColumnIndexOrThrow("estado"))
+                    )
+                )
+            }
+        }
+
+        return lista
+    }
     fun listarRoles(): List<Rol> {
         val roles = mutableListOf<Rol>()
         readableDatabase.rawQuery(
@@ -118,6 +381,32 @@ class UsuarioDbHelper(context: Context) :
 
     fun listarUsuarios(): List<Usuario> =
         consultarUsuarios("$SQL_SELECT_USUARIOS ORDER BY u.$USU_NOMBRE", null)
+
+    fun existeRut(rut: String): Boolean {
+        val cursor = readableDatabase.rawQuery(
+            "SELECT 1 FROM $TABLA_USUARIOS WHERE REPLACE(REPLACE($USU_RUT, '.', ''), '-', '') = ? LIMIT 1",
+            arrayOf(
+                rut.replace(".", "")
+                    .replace("-", "")
+                    .trim()
+            )
+        )
+
+        return cursor.use {
+            it.moveToFirst()
+        }
+    }
+
+    fun existeCorreo(correo: String): Boolean {
+        val cursor = readableDatabase.rawQuery(
+            "SELECT 1 FROM $TABLA_USUARIOS WHERE LOWER($USU_CORREO) = LOWER(?) LIMIT 1",
+            arrayOf(correo.trim())
+        )
+
+        return cursor.use {
+            it.moveToFirst()
+        }
+    }
 
     fun buscarUsuarios(texto: String): List<Usuario> {
         val patron = "%$texto%"

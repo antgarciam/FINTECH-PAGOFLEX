@@ -1,12 +1,17 @@
+
 package cl.duocuc.miregistro.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +36,8 @@ fun ComprobantePagoScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -41,10 +48,14 @@ fun ComprobantePagoScreen(
             color = MaterialTheme.colorScheme.primary
         )
 
-        Spacer(modifier = Modifier.padding(8.dp))
+        Spacer(modifier = Modifier.padding(4.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ),
             elevation = CardDefaults.cardElevation(
                 defaultElevation = 4.dp
             )
@@ -55,35 +66,81 @@ fun ComprobantePagoScreen(
             ) {
                 Text(
                     text = "Comprobante de pago",
-                    style = MaterialTheme.typography.titleLarge
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Text("Número: ${comprobante.numero}")
-                Text("Fecha: ${comprobante.fechaHora}")
-                Text("Empresa: ${comprobante.empresa}")
-                Text("Concepto: ${comprobante.concepto}")
-                Text("Cuota: ${comprobante.cuota}")
-                Text("Folio: ${comprobante.folioCompromiso}")
-                Text("Monto: ${formatoMoneda.format(comprobante.monto)}")
-                Text("Recargo por mora: ${formatoMoneda.format(comprobante.recargoMora)}")
+                Text(
+                    text = "Número: ${comprobante.numero}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Fecha: ${comprobante.fechaHora}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Empresa: ${comprobante.empresa}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Concepto: ${comprobante.concepto}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Cuota: ${comprobante.cuota}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Folio: ${comprobante.folioCompromiso}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Monto: ${formatoMoneda.format(comprobante.monto)}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Recargo por mora: ${
+                        formatoMoneda.format(comprobante.recargoMora)
+                    }",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
                 Text(
                     text = "Total pagado: ${
                         formatoMoneda.format(comprobante.totalPagado)
                     }",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
 
-                Text("Canal: ${comprobante.canal}")
-                Text("Estado: ${comprobante.estado}")
+                Text(
+                    text = "Canal: ${comprobante.canal}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Estado: ${comprobante.estado}",
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
 
-        Spacer(modifier = Modifier.padding(12.dp))
+        Spacer(modifier = Modifier.padding(8.dp))
 
         Button(
             onClick = onVolver,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
             Text("Volver a mis compromisos")
         }

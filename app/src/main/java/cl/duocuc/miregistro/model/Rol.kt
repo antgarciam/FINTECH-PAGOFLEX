@@ -5,6 +5,6 @@ data class Rol(
     val nombre: String
 ) {
     companion object {
-        const val ID_ESTUDIANTE = 3L
+        const val ID_ESTUDIANTE = 1L
     }
 }

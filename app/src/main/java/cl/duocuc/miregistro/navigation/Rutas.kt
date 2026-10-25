@@ -4,6 +4,7 @@ sealed class Ruta(val ruta: String) {
     data object Formulario : Ruta("formulario")
 
     data object Login : Ruta("login")
+    data object Registro : Ruta("registro")
     data object Perfil : Ruta("perfil")
     data object Usuarios : Ruta("usuarios")
 

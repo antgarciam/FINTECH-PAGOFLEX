@@ -20,6 +20,7 @@ import java.util.Locale
 import kotlinx.coroutines.flow.asStateFlow
 
 
+
 class UsuariosViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = UsuarioDbHelper(application)
@@ -40,48 +41,29 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         _historialPagos.asStateFlow()
 
     // Compromisos de prueba
-    private val _compromisos = MutableStateFlow(
-        listOf(
-            Compromiso(
-                id = 1L,
-                empresa = "Altos del Maipo",
-                concepto = "Crédito de consumo",
-                cuota = "1 de 6",
-                monto = 45000,
-                vencimiento = "01-10-2026",
-                estado = "Vencido",
-                folio = "PF-0001"
-            ),
-            Compromiso(
-                id = 2L,
-                empresa = "Altos del Maipo",
-                concepto = "Crédito de consumo",
-                cuota = "2 de 6",
-                monto = 45000,
-                vencimiento = "01-11-2026",
-                estado = "Pendiente",
-                folio = "PF-0002"
-            ),
-            Compromiso(
-                id = 3L,
-                empresa = "Empresa Ejemplo",
-                concepto = "Servicio mensual",
-                cuota = "1 de 3",
-                monto = 20000,
-                vencimiento = "25-10-2026",
-                estado = "Pendiente",
-                folio = "PF-0003"
-            )
-        )
-    )
 
-
+    private val _compromisos =
+        MutableStateFlow<List<Compromiso>>(emptyList())
 
     val compromisos: StateFlow<List<Compromiso>> =
         _compromisos.asStateFlow()
 
+    private val _comprobantesCargados =
+        MutableStateFlow(false)
+
+
     // RN-04: bloquear cuotas pendientes de la misma empresa
     // cuando existe una cuota vencida de esa empresa.
+
+
+    private fun cargarDatosFinancieros(usuarioId: Long) {
+        db.crearCompromisosIniciales(usuarioId)
+
+        _compromisos.value = db.listarCompromisos(usuarioId)
+        _historialPagos.value = db.listarPagos(usuarioId)
+        _comprobantesCargados.value = true
+    }
+
 
     fun puedePagar(compromiso: Compromiso): Boolean {
         // Una cuota vencida puede pagarse para regularizar la deuda.
@@ -104,10 +86,11 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
     }
 
 
+
     fun pagarCompromiso(compromiso: Compromiso): ComprobantePago? {
-        if (!puedePagar(compromiso)) {
-            return null
-        }
+        val usuario = _usuarioActual.value ?: return null
+
+        if (!puedePagar(compromiso)) return null
 
         val compromisoActual = _compromisos.value
             .find { it.id == compromiso.id }
@@ -132,21 +115,25 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
             estado = "Confirmado"
         )
 
-        _compromisos.value = _compromisos.value.map { cuota ->
-            if (cuota.id == compromisoActual.id) {
-                cuota.copy(estado = "Pagado")
-            } else {
-                cuota
-            }
-        }
+        val pagoId = db.insertarPago(usuario.id, comprobante)
 
+        if (pagoId == -1L) return null
+
+        val actualizado = db.actualizarEstadoCompromiso(
+            usuarioId = usuario.id,
+            compromisoId = compromisoActual.id,
+            nuevoEstado = "Pagado"
+        )
+
+        if (!actualizado) return null
+
+        _compromisos.value = db.listarCompromisos(usuario.id)
+        _historialPagos.value = db.listarPagos(usuario.id)
         _comprobanteActual.value = comprobante
-
-        _historialPagos.value =
-            _historialPagos.value + comprobante
 
         return comprobante
     }
+
 
     private val sesion = SesionPreferencias(application)
 
@@ -161,33 +148,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
     private val _usuarioActual = MutableStateFlow(db.buscarPorId(sesion.leer()))
     val usuarioActual: StateFlow<Usuario?> = _usuarioActual.asStateFlow()
 
-    init {
-        if (_usuarioActual.value == null) {
-            // Buscamos si Camila ya está en la BD por su nombre
-            val usuarioSimulado = db.buscarUsuarios("Camila Andrea").firstOrNull()
-
-            if (usuarioSimulado != null) {
-                _usuarioActual.value = usuarioSimulado
-                sesion.guardar(usuarioSimulado.id)
-            } else {
-                // Creamos a Camila adaptado estrictamente a tus campos reales
-                val camila = Usuario(
-                    id = 0L,
-                    nombre = "Camila Andrea Rojas Peña",
-                    correo = "crojas@correo.ejemplo",
-                    ciudad = "Maipú",
-                    rolId = 1L, // Rol R-01 Usuario Final
-                    rolNombre = "Usuario Final",
-                    avatar = null
-                )
-
-                val nuevoId = db.insertarUsuario(camila)
-                _usuarioActual.value = db.buscarPorId(nuevoId)
-                sesion.guardar(nuevoId)
-            }
-            recargar()
-        }
-    }
     private fun recargar() {
         val texto = _filtro.value.trim()
         _usuarios.value = if (texto.isEmpty()) db.listarUsuarios() else db.buscarUsuarios(texto)
@@ -205,7 +165,25 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         _usuarioActual.value = db.buscarPorId(id)
         sesion.guardar(id)
         recargar()
+        cargarDatosFinancieros(id)
     }
+
+    fun validarRegistro(usuario: Usuario): String? {
+        if (!validarRutChileno(usuario.rut)) {
+            return "El RUT ingresado no es válido."
+        }
+
+        if (db.existeRut(usuario.rut)) {
+            return "Ya existe una cuenta registrada con ese RUT."
+        }
+
+        if (db.existeCorreo(usuario.correo)) {
+            return "Ya existe una cuenta registrada con ese correo."
+        }
+
+        return null
+    }
+
 
     fun actualizar(editado: Usuario) {
         db.actualizarUsuario(editado)
@@ -250,42 +228,81 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         super.onCleared()
     }
 
+
     fun validarRutChileno(rutCompleto: String): Boolean {
-        val rutLimpio = rutCompleto.replace(".", "").replace("-", "").trim().uppercase()
+        val rutLimpio = rutCompleto
+            .replace(".", "")
+            .replace("-", "")
+            .trim()
+            .uppercase()
+
         if (rutLimpio.length < 2) return false
 
+        val cuerpo = rutLimpio.dropLast(1)
         val dvRecibido = rutLimpio.last()
-        val cuerpo = rutLimpio.substring(0, rutLimpio.length - 1)
 
-        return try {
-            var monto = 0
-            var multiplicador = 2
-            for ( i in cuerpo.length -1 downTo 0) {
-                monto += Character.getNumericValue(cuerpo[i]) * multiplicador
-                multiplicador = if (multiplicador == 7) 2 else multiplicador + 1
+        if (!cuerpo.all { it.isDigit() }) return false
+        if (!dvRecibido.isDigit() && dvRecibido != 'K') return false
+
+        var suma = 0
+        var multiplicador = 2
+
+        for (i in cuerpo.length - 1 downTo 0) {
+            suma += cuerpo[i].digitToInt() * multiplicador
+            multiplicador = if (multiplicador == 7) {
+                2
+            } else {
+                multiplicador + 1
             }
-            val dvEsperado = 11 - (monto % 11)
-            val dvStr = when (dvEsperado) {
-                11 -> "0"
-                10 -> "K"
-                else -> dvEsperado.toString()
-            }
-            dvStr == dvRecibido.toString()
-        } catch (e: Exception) {
-            false
+        }
+
+        val resultado = 11 - (suma % 11)
+
+        val dvEsperado = when (resultado) {
+            11 -> '0'
+            10 -> 'K'
+            else -> resultado.digitToChar()
+        }
+
+        return dvEsperado == dvRecibido
+    }
+
+
+    fun iniciarSesion(rut: String) {
+        val rutLimpio = rut
+            .replace(".", "")
+            .replace("-", "")
+            .trim()
+
+        val usuarioEncontrado = db.listarUsuarios().find { usuario ->
+            usuario.rut
+                .replace(".", "")
+                .replace("-", "")
+                .trim()
+                .equals(rutLimpio, ignoreCase = true)
+        }
+
+        if (usuarioEncontrado != null) {
+            _usuarioActual.value = usuarioEncontrado
+            sesion.guardar(usuarioEncontrado.id)
+            recargar()
+            cargarDatosFinancieros(usuarioEncontrado.id)
         }
     }
 
-    fun iniciarSesion(rut: String) {
-        val usuarioEncontrado = _usuarios.value.find { it.rut == rut }
-            ?: _usuarios.value.firstOrNull()
-        _usuarioActual.value = usuarioEncontrado
-    }
-
     fun buscarPorRut(rutIngresado: String): Usuario? {
-        val rutLimpio = rutIngresado.replace(".", "").replace("-", "").trim()
-        return _usuarios.value.find { user ->
-            user.rut.replace(".", "").replace("-", "").trim().equals(rutLimpio, ignoreCase = true)
+        val rutLimpio = rutIngresado
+            .replace(".", "")
+            .replace("-", "")
+            .trim()
+            .uppercase()
+
+        return db.listarUsuarios().find { usuario ->
+            usuario.rut
+                .replace(".", "")
+                .replace("-", "")
+                .trim()
+                .uppercase() == rutLimpio
         }
     }
 

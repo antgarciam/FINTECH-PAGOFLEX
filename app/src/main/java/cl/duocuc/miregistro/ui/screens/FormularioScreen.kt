@@ -1,3 +1,4 @@
+
 package cl.duocuc.miregistro.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
@@ -11,15 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,28 +45,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Wallet
 import cl.duocuc.miregistro.R
 import cl.duocuc.miregistro.model.FormularioUiState
 import cl.duocuc.miregistro.model.NivelExperiencia
 import cl.duocuc.miregistro.model.Usuario
 import cl.duocuc.miregistro.ui.components.BotonPrincipal
 import cl.duocuc.miregistro.ui.components.BotonSecundario
-import cl.duocuc.miregistro.ui.components.CampoContrasena
-import cl.duocuc.miregistro.ui.components.CampoTexto
-import cl.duocuc.miregistro.ui.components.CasillaConTexto
-import cl.duocuc.miregistro.ui.components.GrupoRadio
 import cl.duocuc.miregistro.ui.components.ImagenEncabezado
-import cl.duocuc.miregistro.ui.components.InterruptorConTexto
 import cl.duocuc.miregistro.ui.components.TarjetaSeccion
-import cl.duocuc.miregistro.ui.styles.EstilosCampo
 import cl.duocuc.miregistro.ui.theme.Dimens
-import cl.duocuc.miregistro.ui.theme.Exito
-import cl.duocuc.miregistro.ui.theme.ExitoFondo
 import cl.duocuc.miregistro.ui.theme.MiRegistroTheme
 import cl.duocuc.miregistro.viewmodel.FormularioViewModel
 import kotlinx.coroutines.launch
@@ -79,35 +75,56 @@ fun FormularioScreen(
     usuarioActual: Usuario?,
     onVerMiPerfil: () -> Unit,
     onVerUsuarios: () -> Unit,
+    onVerCompromisos: () -> Unit,
+    onVerHistorialPagos: () -> Unit,
     onCerrarSesion: () -> Unit,
     viewModel: FormularioViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     var mostrarDialogo by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     val textoSesionCerrada = stringResource(R.string.snackbar_sesion_cerrada)
 
     if (mostrarDialogo) {
         AlertDialog(
             onDismissRequest = { mostrarDialogo = false },
-            title = { Text(stringResource(R.string.dialogo_titulo)) },
-            text = { Text(stringResource(R.string.dialogo_mensaje)) },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface,
+            title = {
+                Text(stringResource(R.string.dialogo_titulo))
+            },
+            text = {
+                Text(stringResource(R.string.dialogo_mensaje))
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    mostrarDialogo = false
-                    onCerrarSesion()
-
-                    scope.launch { snackbarHostState.showSnackbar(textoSesionCerrada) }
-                }) { Text(stringResource(R.string.menu_cerrar_sesion)) }
+                TextButton(
+                    onClick = {
+                        mostrarDialogo = false
+                        onCerrarSesion()
+                        scope.launch {
+                            snackbarHostState.showSnackbar(textoSesionCerrada)
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.menu_cerrar_sesion),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             },
             dismissButton = {
-                TextButton(onClick = { mostrarDialogo = false }) {
-                    Text(stringResource(R.string.dialogo_cancelar))
+                TextButton(
+                    onClick = { mostrarDialogo = false }
+                ) {
+                    Text(
+                        text = stringResource(R.string.dialogo_cancelar),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         )
@@ -116,43 +133,163 @@ fun FormularioScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Text(
-                    text = if (usuarioActual != null) stringResource(R.string.saludo, usuarioActual.nombre)
-                           else stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(Dimens.espacioMedio)
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.surface,
+                drawerContentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Wallet,
+                        contentDescription = "PagoFlex",
+                        modifier = Modifier.size(42.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = "PagoFlex",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = usuarioActual?.nombre ?: "Bienvenido",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    if (usuarioActual != null) {
+                        Text(
+                            text = if (usuarioActual.rolId == 2L) {
+                                "Soporte / Administrador"
+                            } else {
+                                "Usuario Final"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Text(
+                            text = usuarioActual.correo,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
-                HorizontalDivider()
+
+                Text(
+                    text = "MENÚ PRINCIPAL",
+                    modifier = Modifier.padding(
+                        start = 20.dp,
+                        top = 18.dp,
+                        bottom = 8.dp
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
 
                 if (usuarioActual != null) {
                     NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.menu_mi_perfil)) },
+                        label = { Text("Mis compromisos") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.CalendarMonth,
+                                contentDescription = null
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerCompromisos()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Historial de pagos") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.History,
+                                contentDescription = null
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerHistorialPagos()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Mi perfil") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.AccountCircle,
+                                contentDescription = null
+                            )
+                        },
                         selected = false,
                         onClick = {
                             scope.launch { drawerState.close() }
                             onVerMiPerfil()
-                        }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
                     )
                 }
 
-                NavigationDrawerItem(
-                    label = { Text(stringResource(R.string.menu_ver_usuarios)) },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onVerUsuarios()
-                    }
+                if (usuarioActual?.rolId == 2L) {
+                    NavigationDrawerItem(
+                        label = { Text("Gestionar usuarios") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.People,
+                                contentDescription = null
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerUsuarios()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(
+                        horizontal = 16.dp,
+                        vertical = 12.dp
+                    ),
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
 
                 if (usuarioActual != null) {
                     NavigationDrawerItem(
-                        label = { Text(stringResource(R.string.menu_cerrar_sesion)) },
+                        label = { Text("Cerrar sesión") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.Logout,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
                         selected = false,
                         onClick = {
                             scope.launch { drawerState.close() }
                             mostrarDialogo = true
-                        }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
                     )
                 }
             }
@@ -167,12 +304,19 @@ fun FormularioScreen(
             onNivelSeleccionado = viewModel::onNivelSeleccionado,
             onNoticiasCambia = viewModel::onNoticiasCambia,
             onTerminosCambia = viewModel::onTerminosCambia,
-            onRegistrar = { viewModel.onRegistrar()?.let { usuario -> onRegistroExitoso(usuario) } },
+            onRegistrar = {
+                viewModel.onRegistrar()?.let { usuario ->
+                    onRegistroExitoso(usuario)
+                }
+            },
             onLimpiar = viewModel::onLimpiar,
             onCiudadSeleccionada = viewModel::onCiudadSeleccionada,
             usuarioActual = usuarioActual,
-            onAbrirMenu = { scope.launch { drawerState.open() } },
-            snackbarHostState = snackbarHostState
+            onAbrirMenu = {
+                scope.launch { drawerState.open() }
+            },
+            snackbarHostState = snackbarHostState,
+            onVerMiPerfil = onVerMiPerfil
         )
     }
 }
@@ -193,7 +337,7 @@ fun FormularioContent(
     onCiudadSeleccionada: (String) -> Unit = {},
     usuarioActual: Usuario? = null,
     onAbrirMenu: () -> Unit = {},
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState()},
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onVerMiPerfil: () -> Unit = {}
 ) {
     var mostrarDetallePago by remember { mutableStateOf(false) }
@@ -202,25 +346,62 @@ fun FormularioContent(
     if (mostrarDetallePago) {
         AlertDialog(
             onDismissRequest = { mostrarDetallePago = false },
-            title = { Text("Detalle de Cuenta pendiente") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface,
+            title = {
+                Text("Detalle de cuenta pendiente")
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Empresa: Club Deportivo Los Halcones", fontWeight = FontWeight.Bold)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Empresa: Club Deportivo Los Halcones",
+                        fontWeight = FontWeight.Bold
+                    )
                     Text("Concepto: Cuota social octubre (10/12)")
-                    Text("Monto original: $15.000")
-                    Text("Recargo por atraso: $2.000 (RN-03)", color = MaterialTheme.colorScheme.error)
-                    HorizontalDivider()
-                    Text("Total a pagar: $17.000", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Monto original: $15.000",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Recargo por atraso: $2.000 (RN-03)",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                    Text(
+                        "Total a pagar: $17.000",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    mostrarDetallePago = false
-                    cuentaPagadaExitosa = true // Simula la recaudación exitosa cambiando el estado local
-                }) { Text("Pagar cuenta ($17.000)") }
+                TextButton(
+                    onClick = {
+                        mostrarDetallePago = false
+                        cuentaPagadaExitosa = true
+                    }
+                ) {
+                    Text(
+                        "Pagar cuenta ($17.000)",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             },
             dismissButton = {
-                TextButton(onClick = { mostrarDetallePago = false }) { Text("Cancelar") }
+                TextButton(
+                    onClick = { mostrarDetallePago = false }
+                ) {
+                    Text(
+                        "Cancelar",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         )
     }
@@ -228,10 +409,15 @@ fun FormularioContent(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tus pagos pendientes") }, // RNF-04: Tono Positivo y empático
+                title = {
+                    Text("Tus pagos pendientes")
+                },
                 navigationIcon = {
                     IconButton(onClick = onAbrirMenu) {
-                        Icon(painter = painterResource(R.drawable.ic_menu), contentDescription = "Menú")
+                        Icon(
+                            painter = painterResource(R.drawable.ic_menu),
+                            contentDescription = "Menú"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -241,10 +427,11 @@ fun FormularioContent(
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -254,7 +441,7 @@ fun FormularioContent(
             ImagenEncabezado(
                 imagen = R.drawable.banner_registro,
                 descripcion = "Banner financiero PagoFlex",
-                titulo = "$ 535.000", // RF-02: Total consolidado del mes de Camila
+                titulo = "$ 535.000",
                 subtitulo = "Próximo vencimiento: 05-10-2026"
             )
 
@@ -264,7 +451,10 @@ fun FormularioContent(
             ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(Dimens.espacioMedio),
@@ -275,6 +465,7 @@ fun FormularioContent(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onErrorContainer
                         )
+
                         Text(
                             text = "Tienes 1 compromiso de pago vencido.",
                             style = MaterialTheme.typography.bodyMedium,
@@ -285,20 +476,47 @@ fun FormularioContent(
                 }
 
                 TarjetaSeccion(titulo = "Cuentas del Mes") {
-                    Column(verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)) {
-
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
+                    ) {
                         if (!cuentaPagadaExitosa) {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(Dimens.espacioMedio)) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = 2.dp
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(Dimens.espacioMedio)
+                                ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Text("Club Los Halcones", fontWeight = FontWeight.Bold)
-                                        Text("$17.000", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            "Club Los Halcones",
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            "$17.000",
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
-                                    Text("Cuota 10/12 · Vence: 05-10-2026 (Vencida)", style = MaterialTheme.typography.bodySmall)
+
+                                    Text(
+                                        "Cuota 10/12 · Vence: 05-10-2026 (Vencida)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
                                     Spacer(modifier = Modifier.height(8.dp))
+
                                     BotonPrincipal(
                                         texto = "Ver detalle para pagar",
                                         onClick = { mostrarDetallePago = true },
@@ -308,16 +526,40 @@ fun FormularioContent(
                             }
                         }
 
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(Dimens.espacioMedio)) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = 2.dp
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(Dimens.espacioMedio)
+                            ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Plaza Oriente", fontWeight = FontWeight.Bold)
-                                    Text("$520.000", fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "Plaza Oriente",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        "$520.000",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
                                 }
-                                Text("Arriendo octubre · Vence: 10-10-2026", style = MaterialTheme.typography.bodySmall)
+
+                                Text(
+                                    "Arriendo octubre · Vence: 10-10-2026",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -326,7 +568,10 @@ fun FormularioContent(
                 if (cuentaPagadaExitosa) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = ExitoFondo, contentColor = Exito)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     ) {
                         Row(
                             modifier = Modifier.padding(Dimens.espacioMedio),
@@ -335,11 +580,13 @@ fun FormularioContent(
                             Icon(
                                 painter = painterResource(R.drawable.ic_check),
                                 contentDescription = null,
-                                tint = Exito
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
+
                             Text(
                                 text = "¡Pago exitoso! Comprobante generado: CPR-000402",
                                 style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.padding(start = Dimens.espacioChico)
                             )
                         }
@@ -358,12 +605,14 @@ fun FormularioContent(
     }
 }
 
-
 @Composable
 private fun MensajeExito(nombre: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = ExitoFondo, contentColor = Exito)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
     ) {
         Row(
             modifier = Modifier.padding(Dimens.espacioMedio),
@@ -372,12 +621,14 @@ private fun MensajeExito(nombre: String) {
             Icon(
                 painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
-                tint = Exito,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.size(Dimens.tamanoIcono)
             )
+
             Text(
                 text = stringResource(R.string.registro_exitoso, nombre),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.padding(start = Dimens.espacioChico)
             )
         }
@@ -390,9 +641,15 @@ private fun FormularioVacioPreview() {
     MiRegistroTheme {
         FormularioContent(
             uiState = FormularioUiState(),
-            onNombreCambia = {}, onCorreoCambia = {}, onContrasenaCambia = {},
-            onAlternarVisibilidad = {}, onNivelSeleccionado = {}, onNoticiasCambia = {},
-            onTerminosCambia = {}, onRegistrar = {}, onLimpiar = {}
+            onNombreCambia = {},
+            onCorreoCambia = {},
+            onContrasenaCambia = {},
+            onAlternarVisibilidad = {},
+            onNivelSeleccionado = {},
+            onNoticiasCambia = {},
+            onTerminosCambia = {},
+            onRegistrar = {},
+            onLimpiar = {}
         )
     }
 }
@@ -409,9 +666,15 @@ private fun FormularioConErroresPreview() {
                 errorContrasena = "Mínimo 6 caracteres",
                 errorTerminos = "Debes aceptar los términos"
             ),
-            onNombreCambia = {}, onCorreoCambia = {}, onContrasenaCambia = {},
-            onAlternarVisibilidad = {}, onNivelSeleccionado = {}, onNoticiasCambia = {},
-            onTerminosCambia = {}, onRegistrar = {}, onLimpiar = {}
+            onNombreCambia = {},
+            onCorreoCambia = {},
+            onContrasenaCambia = {},
+            onAlternarVisibilidad = {},
+            onNivelSeleccionado = {},
+            onNoticiasCambia = {},
+            onTerminosCambia = {},
+            onRegistrar = {},
+            onLimpiar = {}
         )
     }
 }

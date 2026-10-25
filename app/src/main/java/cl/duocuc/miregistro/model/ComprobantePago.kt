@@ -1,4 +1,3 @@
-
 package cl.duocuc.miregistro.model
 
 data class ComprobantePago(

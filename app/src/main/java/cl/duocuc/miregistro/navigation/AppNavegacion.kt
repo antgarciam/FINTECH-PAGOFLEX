@@ -22,6 +22,7 @@ import cl.duocuc.miregistro.ui.screens.HistorialPagosScreen
 import cl.duocuc.miregistro.ui.screens.LoginScreen
 import cl.duocuc.miregistro.ui.screens.ReporteProblema
 import androidx.compose.ui.platform.LocalContext
+import cl.duocuc.miregistro.ui.screens.RegistroScreen
 
 @Composable
 fun AppNavegacion() {
@@ -36,6 +37,47 @@ fun AppNavegacion() {
     val historialPagos by usuariosViewModel.historialPagos.collectAsStateWithLifecycle()
 
     NavHost(navController = navController, startDestination = Ruta.Login.ruta) {
+
+        composable(Ruta.Registro.ruta) {
+            val context = LocalContext.current
+
+            RegistroScreen(
+                onRegistroExitoso = { usuario ->
+                    val error = usuariosViewModel.validarRegistro(usuario)
+
+                    if (error != null) {
+                        Toast.makeText(
+                            context,
+                            error,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        usuariosViewModel.registrar(usuario)
+
+                        Toast.makeText(
+                            context,
+                            "Cuenta creada correctamente.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        navController.navigate(Ruta.Formulario.ruta) {
+                            popUpTo(Ruta.Login.ruta)
+                        }
+                    }
+                },
+                onMostrarMensaje = { mensaje ->
+                    Toast.makeText(
+                        context,
+                        mensaje,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                onVolverLogin = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
 
         composable(Ruta.Login.ruta) {
             val context = LocalContext.current
@@ -70,6 +112,9 @@ fun AppNavegacion() {
                 },
                 onNavegarRecuperar = {
                     navController.navigate("recuperar")
+                },
+                onNavegarRegistro = {
+                    navController.navigate(Ruta.Registro.ruta)
                 }
             )
         }
@@ -80,13 +125,25 @@ fun AppNavegacion() {
                     navController.navigate(Ruta.Perfil.ruta)
                 },
                 usuarioActual = usuarioActual,
-                onVerMiPerfil = { navController.navigate(Ruta.Perfil.ruta) },
-                onVerUsuarios = { navController.navigate(Ruta.Usuarios.ruta) },
+                onVerMiPerfil = {
+                    navController.navigate(Ruta.Perfil.ruta)
+                },
+                onVerUsuarios = {
+                    navController.navigate(Ruta.Usuarios.ruta)
+                },
+                onVerCompromisos = {
+                    navController.navigate(Ruta.Compromisos.ruta)
+                },
+                onVerHistorialPagos = {
+                    navController.navigate(Ruta.HistorialPagos.ruta)
+                },
                 onCerrarSesion = {
                     usuariosViewModel.cerrarSesion()
 
                     navController.navigate(Ruta.Login.ruta) {
-                        popUpTo(0) { inclusive = true }
+                        popUpTo(0) {
+                            inclusive = true
+                        }
                     }
                 }
             )

@@ -1,5 +1,6 @@
 package cl.duocuc.miregistro.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -40,21 +41,25 @@ import cl.duocuc.miregistro.ui.theme.MiRegistroTheme
 fun LoginScreen(
     onLoginExitoso: (rut: String, contrasena: String) -> Unit,
     onMostrarMensaje: (String) -> Unit,
-    onNavegarRecuperar: () -> Unit
+    onNavegarRecuperar: () -> Unit,
+    onNavegarRegistro: () -> Unit
 ) {
     var rut by rememberSaveable { mutableStateOf("") }
     var contrasenia by rememberSaveable { mutableStateOf("") }
 
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(Dimens.espacioPantalla)
             .imePadding()
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
+
+    Icon(
             painter = painterResource(id = R.drawable.ic_persona),
             contentDescription = "Logo PagoFlex",
             modifier = Modifier.size(100.dp),
@@ -148,6 +153,17 @@ fun LoginScreen(
         ) {
             Text("¿Olvidaste tu contraseña?")
         }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(
+            onClick = onNavegarRegistro,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "¿No tienes cuenta? Crear cuenta",
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -158,7 +174,8 @@ fun LoginScreenPreview() {
         LoginScreen(
             onLoginExitoso = { _, _ -> },
             onMostrarMensaje = {},
-            onNavegarRecuperar = {}
+            onNavegarRecuperar = {},
+            onNavegarRegistro = {}
         )
     }
 }

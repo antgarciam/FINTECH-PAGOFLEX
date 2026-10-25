@@ -1,7 +1,6 @@
-
 package cl.duocuc.miregistro.ui.screens
 
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,26 +10,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cl.duocuc.miregistro.model.Compromiso
 import java.text.NumberFormat
 import java.util.Locale
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.material3.FilterChip
-
-
 
 @Composable
 fun CompromisosScreen(
@@ -39,7 +37,6 @@ fun CompromisosScreen(
     onVolver: () -> Unit,
     onPagar: (Compromiso) -> Unit
 ) {
-
     var compromisoSeleccionado by remember {
         mutableStateOf<Compromiso?>(null)
     }
@@ -83,22 +80,26 @@ fun CompromisosScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Text(
             text = "Mis compromisos",
-            style = MaterialTheme.typography.headlineMedium
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Text(
             text = "Consulta tus cuotas y su estado de pago.",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
+            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Text(
             text = "Filtrar compromisos",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Column(
@@ -114,13 +115,17 @@ fun CompromisosScreen(
                 FilterChip(
                     selected = filtroEstado == "Todos",
                     onClick = { filtroEstado = "Todos" },
-                    label = { Text("Todos (${compromisos.size})") }
+                    label = {
+                        Text("Todos (${compromisos.size})")
+                    }
                 )
 
                 FilterChip(
                     selected = filtroEstado == "Pagados",
                     onClick = { filtroEstado = "Pagados" },
-                    label = { Text("Pagados ($cantidadPagados)") }
+                    label = {
+                        Text("Pagados ($cantidadPagados)")
+                    }
                 )
             }
 
@@ -131,13 +136,17 @@ fun CompromisosScreen(
                 FilterChip(
                     selected = filtroEstado == "Vencidos",
                     onClick = { filtroEstado = "Vencidos" },
-                    label = { Text("Vencidos ($cantidadVencidos)") }
+                    label = {
+                        Text("Vencidos ($cantidadVencidos)")
+                    }
                 )
 
                 FilterChip(
                     selected = filtroEstado == "Pendientes",
                     onClick = { filtroEstado = "Pendientes" },
-                    label = { Text("Pendientes ($cantidadPendientes)") }
+                    label = {
+                        Text("Pendientes ($cantidadPendientes)")
+                    }
                 )
             }
         }
@@ -166,54 +175,58 @@ fun CompromisosScreen(
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
                         elevation = CardDefaults.cardElevation(
                             defaultElevation = 3.dp
                         )
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
                                 text = compromiso.empresa,
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
 
                             Text(
                                 text = compromiso.concepto,
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
 
                             Text(
                                 text = "Cuota: ${compromiso.cuota}",
-                                modifier = Modifier.padding(top = 8.dp)
+                                modifier = Modifier.padding(top = 8.dp),
+                                color = MaterialTheme.colorScheme.onSurface
                             )
 
                             Text(
-                                text = "Monto: ${formatearMonto(compromiso.monto)}"
+                                text = "Monto: ${formatearMonto(compromiso.monto)}",
+                                color = MaterialTheme.colorScheme.primary
                             )
 
                             Text(
-                                text = "Vencimiento: ${compromiso.vencimiento}"
+                                text = "Vencimiento: ${compromiso.vencimiento}",
+                                color = MaterialTheme.colorScheme.onSurface
                             )
 
                             Text(
-                                text = "Folio: ${compromiso.folio}"
+                                text = "Folio: ${compromiso.folio}",
+                                color = MaterialTheme.colorScheme.onSurface
                             )
 
                             Text(
                                 text = "Estado: ${compromiso.estado}",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = when (
-                                    compromiso.estado.lowercase()
-                                ) {
-                                    "vencido" ->
-                                        MaterialTheme.colorScheme.error
-
-                                    "pagado" ->
-                                        MaterialTheme.colorScheme.primary
-
-                                    else ->
-                                        MaterialTheme.colorScheme.onSurface
+                                color = when (compromiso.estado.lowercase()) {
+                                    "vencido" -> MaterialTheme.colorScheme.error
+                                    "pagado" -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.onSurface
                                 },
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
@@ -239,7 +252,13 @@ fun CompromisosScreen(
                                     mostrarConfirmacion = true
                                 },
                                 enabled = pagoPermitido,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             ) {
                                 Text(
                                     text = when {
@@ -271,7 +290,10 @@ fun CompromisosScreen(
                 .fillMaxWidth()
                 .padding(top = 12.dp)
         ) {
-            Text("Volver")
+            Text(
+                text = "Volver",
+                color = MaterialTheme.colorScheme.primary
+            )
         }
     }
 
@@ -283,6 +305,9 @@ fun CompromisosScreen(
                 mostrarConfirmacion = false
                 compromisoSeleccionado = null
             },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface,
             title = {
                 Text("Confirmar pago")
             },
@@ -301,7 +326,11 @@ fun CompromisosScreen(
                         onPagar(compromiso)
                         mostrarConfirmacion = false
                         compromisoSeleccionado = null
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("Confirmar pago")
                 }
@@ -313,12 +342,14 @@ fun CompromisosScreen(
                         compromisoSeleccionado = null
                     }
                 ) {
-                    Text("Cancelar")
+                    Text(
+                        "Cancelar",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         )
     }
-
 }
 
 private fun formatearMonto(monto: Int): String {
