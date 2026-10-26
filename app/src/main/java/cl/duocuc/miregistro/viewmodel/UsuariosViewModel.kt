@@ -14,11 +14,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import cl.duocuc.miregistro.model.ComprobantePago
+import cl.duocuc.miregistro.model.Reporte
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.flow.asStateFlow
-
+import kotlin.collections.emptyList
 
 
 class UsuariosViewModel(application: Application) : AndroidViewModel(application) {
@@ -324,5 +325,35 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         }
 
         return false
+    }
+
+    private val _reportes = MutableStateFlow<List<Reporte>>(emptyList())
+    val reportes: StateFlow<List<Reporte>> = _reportes.asStateFlow()
+
+    // Cargar reportes iniciales al iniciar el ViewModel (si tienes un init)
+    init {
+        cargarReportes()
+    }
+
+    fun cargarReportes() {
+        _reportes.value = db.listarReportes()
+    }
+
+    fun guardarReporteEnBD(motivo: String, detalle: String) {
+        val usuario = _usuarioActual.value
+        val nuevoReporte = Reporte(
+            clienteNombre = usuario?.nombre ?: "Usuario anónimo",
+            clienteCorreo = usuario?.correo ?: "sin_correo@pago.cl",
+            motivo = motivo,
+            detalle = detalle,
+            fechaHora = "26-10-2026 13:00",
+            estado = "En revisión"
+        )
+
+        // 1. Guardar en SQLite
+        db.insertarReporte(nuevoReporte)
+
+        // 2. Refrescar la lista observable para que la pantalla del Agente se actualice
+        cargarReportes()
     }
 }

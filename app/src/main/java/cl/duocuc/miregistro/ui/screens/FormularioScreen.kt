@@ -77,6 +77,7 @@ fun FormularioScreen(
     onVerUsuarios: () -> Unit,
     onVerCompromisos: () -> Unit,
     onVerHistorialPagos: () -> Unit,
+    onVerReportes: () -> Unit,
     onCerrarSesion: () -> Unit,
     viewModel: FormularioViewModel = viewModel()
 ) {
@@ -243,6 +244,21 @@ fun FormularioScreen(
                         onClick = {
                             scope.launch { drawerState.close() }
                             onVerMiPerfil()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Reportar incidencia") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.AccountCircle,
+                                contentDescription = null
+                            )
+                        }, selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerReportes()
                         },
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )

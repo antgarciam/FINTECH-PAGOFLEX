@@ -23,6 +23,7 @@ import cl.duocuc.miregistro.ui.screens.LoginScreen
 import cl.duocuc.miregistro.ui.screens.ReporteProblema
 import androidx.compose.ui.platform.LocalContext
 import cl.duocuc.miregistro.ui.screens.RegistroScreen
+import cl.duocuc.miregistro.ui.screens.ReportesScreen
 
 @Composable
 fun AppNavegacion() {
@@ -137,6 +138,9 @@ fun AppNavegacion() {
                 onVerHistorialPagos = {
                     navController.navigate(Ruta.HistorialPagos.ruta)
                 },
+                onVerReportes = {
+                    navController.navigate(Ruta.Reportes.ruta)
+                },
                 onCerrarSesion = {
                     usuariosViewModel.cerrarSesion()
 
@@ -247,6 +251,15 @@ fun AppNavegacion() {
                 onVolver = { navController.navigateUp() },
                 onGuardarResolucion = { respuesta, estadoCompromiso, estadoReporte ->
                     navController.navigateUp()
+                }
+            )
+        }
+
+        composable(Ruta.Reportes.ruta) {
+            ReportesScreen(
+                onVolver = { navController.navigateUp() },
+                onEnviarReporte = { motivo, detalle ->
+                    usuariosViewModel.guardarReporteEnBD(motivo, detalle)
                 }
             )
         }

@@ -9,6 +9,7 @@ import cl.duocuc.miregistro.model.Rol
 import cl.duocuc.miregistro.model.Usuario
 import cl.duocuc.miregistro.model.Compromiso
 import cl.duocuc.miregistro.model.ComprobantePago
+import cl.duocuc.miregistro.model.Reporte
 
 class UsuarioDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
@@ -16,7 +17,7 @@ class UsuarioDbHelper(context: Context) :
     companion object {
         private const val NOMBRE_BD = "miregistro.db"
         // Versión 4: incluye avatar, RUT y contraseña
-        private const val VERSION_BD = 7
+        private const val VERSION_BD = 8
 
         private const val TABLA_ROLES = "roles"
         private const val ROL_ID = "id_rol"
@@ -31,6 +32,21 @@ class UsuarioDbHelper(context: Context) :
         private const val USU_CIUDAD = "ciudad"
         private const val USU_ROL = "id_rol"
         private const val USU_AVATAR = "avatar"
+
+        private const val TABLA_REPORTES = "reportes"
+        private const val SQL_CREAR_REPORTES =
+            """
+                CREATE TABLE reportes(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                cliente_nombre TEXT NOT NULL,
+                cliente_correo TEXT NOT NULL,
+                motivo TEXT NOT NULL,
+                detalle TEXT NOT NULL,
+                estado TEXT NOT NULL,
+                fecha_hora TEXT NOT NULL,
+                respuesta_agente TEXT
+                )
+            """
 
         private const val SQL_CREAR_ROLES =
             "CREATE TABLE $TABLA_ROLES (" +
@@ -129,6 +145,7 @@ class UsuarioDbHelper(context: Context) :
         db.execSQL(SQL_PRECARGAR_USUARIOS)
         db.execSQL(SQL_CREAR_COMPROMISOS)
         db.execSQL(SQL_CREAR_PAGOS)
+        db.execSQL(SQL_CREAR_REPORTES)
     }
 
 
@@ -185,6 +202,10 @@ class UsuarioDbHelper(context: Context) :
         if (oldVersion < 7) {
             db.execSQL(SQL_CREAR_COMPROMISOS)
             db.execSQL(SQL_CREAR_PAGOS)
+        }
+
+        if (oldVersion < 8) {
+            db.execSQL (SQL_CREAR_REPORTES)
         }
     }
 
@@ -479,4 +500,50 @@ class UsuarioDbHelper(context: Context) :
             if (cursor.isNull(columna)) null else cursor.getBlob(columna)
         }
     )
+
+    fun insertarReporte(reporte: Reporte): Long {
+        val valores = ContentValues().apply {
+            put("cliente_nombre", reporte.clienteNombre)
+            put("cliente_correo", reporte.clienteCorreo)
+            put("motivo", reporte.motivo)
+            put("detalle", reporte.detalle)
+            put("estado", reporte.estado)
+            put("fecha_hora", reporte.fechaHora)
+            put("respuesta_agente", reporte.respuestaAgente)
+        }
+        return writableDatabase.insert(TABLA_REPORTES, null, valores)
+    }
+
+    fun listarReportes(): List<Reporte> {
+        val lista = mutableListOf<Reporte>()
+        readableDatabase.rawQuery(
+            "SELECT * FROM $TABLA_REPORTES ORDER BY id DESC", null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                lista.add(
+                    Reporte(
+                        id = cursor.getLong(cursor.getColumnIndexOrThrow("id")),
+                        clienteNombre = cursor.getString(cursor.getColumnIndexOrThrow("cliente_nombre")),
+                        clienteCorreo = cursor.getString(cursor.getColumnIndexOrThrow("cliente_correo")),
+                        motivo = cursor.getString(cursor.getColumnIndexOrThrow("motivo")),
+                        detalle = cursor.getString(cursor.getColumnIndexOrThrow("detalle")),
+                        estado = cursor.getString(cursor.getColumnIndexOrThrow("estado")),
+                        fechaHora = cursor.getString(cursor.getColumnIndexOrThrow("fecha_hora")),
+                        respuestaAgente = cursor.getString(cursor.getColumnIndexOrThrow("respuesta_agente"))
+                    )
+                )
+            }
+        }
+        return lista
+    }
+
+    fun actualizarEstadoReporte(id: Long, nuevoEstado: String, respuesta: String?): Int {
+        val valores = ContentValues().apply {
+            put("estado", nuevoEstado)
+            put("respuesta_agente", respuesta)
+        }
+        return writableDatabase.update(
+            TABLA_REPORTES, valores, "id = ?", arrayOf(id.toString())
+        )
+    }
 }

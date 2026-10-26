@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MiRegistro</string>
+    <string name="app_name">PagoFlex</string>
 
     <string name="titulo_formulario">Crear cuenta</string>
     <string name="banner_titulo">Únete a la comunidad</string>
