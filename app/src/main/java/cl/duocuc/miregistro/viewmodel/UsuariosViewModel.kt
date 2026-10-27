@@ -4,80 +4,59 @@ import android.app.Application
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import cl.duocuc.miregistro.data.ConvertidorImagen
 import cl.duocuc.miregistro.data.SesionPreferencias
 import cl.duocuc.miregistro.data.UsuarioDbHelper
 import cl.duocuc.miregistro.model.Rol
 import cl.duocuc.miregistro.model.Usuario
 import cl.duocuc.miregistro.model.Compromiso
+import cl.duocuc.miregistro.model.ComprobantePago
+import cl.duocuc.miregistro.model.Reporte
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import cl.duocuc.miregistro.model.ComprobantePago
-import cl.duocuc.miregistro.model.Reporte
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.flow.asStateFlow
-import kotlin.collections.emptyList
-
 
 class UsuariosViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = UsuarioDbHelper(application)
 
-    private val _comprobanteActual =
-        MutableStateFlow<ComprobantePago?>(null)
+    private val _comprobanteActual = MutableStateFlow<ComprobantePago?>(null)
+    val comprobanteActual: StateFlow<ComprobantePago?> = _comprobanteActual.asStateFlow()
 
-    //Comprobante de pago del compromiso
+    private val _historialPagos = MutableStateFlow<List<ComprobantePago>>(emptyList())
+    val historialPagos: StateFlow<List<ComprobantePago>> = _historialPagos.asStateFlow()
 
-    val comprobanteActual: StateFlow<ComprobantePago?> =
-        _comprobanteActual.asStateFlow()
+    private val _compromisos = MutableStateFlow<List<Compromiso>>(emptyList())
+    val compromisos: StateFlow<List<Compromiso>> = _compromisos.asStateFlow()
 
-    // historial de pagos
-    private val _historialPagos =
-        MutableStateFlow<List<ComprobantePago>>(emptyList())
-
-    val historialPagos: StateFlow<List<ComprobantePago>> =
-        _historialPagos.asStateFlow()
-
-    // Compromisos de prueba
-
-    private val _compromisos =
-        MutableStateFlow<List<Compromiso>>(emptyList())
-
-    val compromisos: StateFlow<List<Compromiso>> =
-        _compromisos.asStateFlow()
-
-    private val _comprobantesCargados =
-        MutableStateFlow(false)
-
-
-    // RN-04: bloquear cuotas pendientes de la misma empresa
-    // cuando existe una cuota vencida de esa empresa.
-
+    private val _comprobantesCargados = MutableStateFlow(false)
 
     private fun cargarDatosFinancieros(usuarioId: Long) {
         db.crearCompromisosIniciales(usuarioId)
-
         _compromisos.value = db.listarCompromisos(usuarioId)
         _historialPagos.value = db.listarPagos(usuarioId)
         _comprobantesCargados.value = true
     }
 
+    fun cargarCompromisos(usuarioId: Long) {
+        _compromisos.value = db.listarCompromisos(usuarioId)
+    }
 
     fun puedePagar(compromiso: Compromiso): Boolean {
-        // Una cuota vencida puede pagarse para regularizar la deuda.
         if (compromiso.estado.equals("Vencido", ignoreCase = true)) {
             return true
         }
 
-        // Solo se pueden pagar cuotas pendientes.
         if (!compromiso.estado.equals("Pendiente", ignoreCase = true)) {
             return false
         }
 
-        // Revisa si existe una cuota vencida en la misma empresa.
         val tieneCuotaVencida = _compromisos.value.any { otraCuota ->
             otraCuota.empresa.equals(compromiso.empresa, ignoreCase = true) &&
                     otraCuota.estado.equals("Vencido", ignoreCase = true)
@@ -85,8 +64,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
 
         return !tieneCuotaVencida
     }
-
-
 
     fun pagarCompromiso(compromiso: Compromiso): ComprobantePago? {
         val usuario = _usuarioActual.value ?: return null
@@ -117,7 +94,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         )
 
         val pagoId = db.insertarPago(usuario.id, comprobante)
-
         if (pagoId == -1L) return null
 
         val actualizado = db.actualizarEstadoCompromiso(
@@ -134,7 +110,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
 
         return comprobante
     }
-
 
     private val sesion = SesionPreferencias(application)
 
@@ -185,7 +160,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         return null
     }
 
-
     fun actualizar(editado: Usuario) {
         db.actualizarUsuario(editado)
         if (_usuarioActual.value?.id == editado.id) _usuarioActual.value = db.buscarPorId(editado.id)
@@ -198,20 +172,15 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         recargar()
     }
 
-    // NUEVO (Cámara): la cámara entrega directamente un Bitmap
     fun cambiarAvatarDesdeCamara(foto: Bitmap) {
         guardarAvatar(ConvertidorImagen.aBytes(foto))
     }
 
-    // NUEVO (Galería): la galería entrega un Uri. Para leerlo hace falta un Context:
-    // getApplication() lo entrega porque este es un AndroidViewModel.
     fun cambiarAvatarDesdeGaleria(uri: Uri) {
         val imagen = ConvertidorImagen.desdeUri(getApplication(), uri) ?: return
         guardarAvatar(ConvertidorImagen.aBytes(imagen))
     }
 
-    // NUEVO (Avatar): 1) UPDATE en la BD  2) se relee al usuario para refrescar el Perfil.
-    // Solo funciona con sesión iniciada (?: return = "si no hay usuario, no hagas nada").
     private fun guardarAvatar(bytes: ByteArray) {
         val usuario = _usuarioActual.value ?: return
         db.actualizarAvatar(usuario.id, bytes)
@@ -228,7 +197,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         db.close()
         super.onCleared()
     }
-
 
     fun validarRutChileno(rutCompleto: String): Boolean {
         val rutLimpio = rutCompleto
@@ -267,7 +235,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
 
         return dvEsperado == dvRecibido
     }
-
 
     fun iniciarSesion(rut: String) {
         val rutLimpio = rut
@@ -308,19 +275,16 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun actualizarContrasena(rutIngresado: String, nuevaContrasena: String): Boolean {
-        // 1. Limpiamos el RUT ingresado (quitar puntos y guión)
         val rutLimpioInput = rutIngresado.replace(".", "").replace("-", "").trim()
 
-        // 2. Buscamos si existe el usuario en la lista cargada
         val usuario = _usuarios.value.find { user ->
             user.rut.replace(".", "").replace("-", "").trim().equals(rutLimpioInput, ignoreCase = true)
         } ?: return false
 
-        // 3. Actualizamos en la base de datos SQLite
         val filasAfectadas = db.actualizarContrasena(usuario.rut, nuevaContrasena)
 
         if (filasAfectadas > 0) {
-            recargar() // Refresca la lista de usuarios en memoria
+            recargar()
             return true
         }
 
@@ -330,7 +294,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
     private val _reportes = MutableStateFlow<List<Reporte>>(emptyList())
     val reportes: StateFlow<List<Reporte>> = _reportes.asStateFlow()
 
-    // Cargar reportes iniciales al iniciar el ViewModel (si tienes un init)
     init {
         cargarReportes()
     }
@@ -350,10 +313,95 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
             estado = "En revisión"
         )
 
-        // 1. Guardar en SQLite
         db.insertarReporte(nuevoReporte)
-
-        // 2. Refrescar la lista observable para que la pantalla del Agente se actualice
         cargarReportes()
+    }
+
+    // --- OPERACIONES DE COMPROMISOS (Trello) ---
+
+    fun crearNuevoCompromiso(rut: String, concepto: String, monto: Int, vencimiento: String): Boolean {
+        val usuario = _usuarios.value.firstOrNull {
+            it.rut.replace(".", "").replace("-", "").equals(rut.replace(".", "").replace("-", ""), ignoreCase = true)
+        }
+        val usuarioId = usuario?.id ?: usuarioActual.value?.id ?: return false
+
+        val nuevoCompromiso = Compromiso(
+            id = 0L,
+            empresa = "Altos del Maipo",
+            concepto = concepto,
+            cuota = "1 de 1",
+            monto = monto,
+            vencimiento = vencimiento,
+            estado = "Pendiente",
+            folio = "PF-${(1000..9999).random()}"
+        )
+
+        val exito = db.actualizarEstadoCompromiso(usuarioId, nuevoCompromiso.id, "Pendiente")
+        cargarCompromisos(usuarioId)
+        return true
+    }
+
+    fun anularCompromiso(compromisoId: Long, motivo: String): Boolean {
+        if (motivo.isBlank()) return false
+        val compromiso = _compromisos.value.firstOrNull { it.id == compromisoId } ?: return false
+        if (compromiso.estado.equals("Pagado", ignoreCase = true)) return false
+
+        val usuarioId = usuarioActual.value?.id ?: 1L
+        val actualizado = db.actualizarEstadoCompromiso(usuarioId, compromisoId, "Anulado")
+        if (actualizado) {
+            cargarCompromisos(usuarioId)
+        }
+        return actualizado
+    }
+
+    // --- PANEL DE COBRANZA MENSUAL (Trello) ---
+
+    data class MetricasCobranza(
+        val empresa: String,
+        val pagados: Int,
+        val pendientes: Int,
+        val vencidos: Int,
+        val totalRecaudado: Int,
+        val tasaCobranza: String
+    )
+
+    fun obtenerMetricasCobranza(empresaFiltro: String = "Altos del Maipo"): MetricasCobranza {
+        val compromisosEmpresa = _compromisos.value.filter {
+            it.empresa.equals(empresaFiltro, ignoreCase = true)
+        }
+
+        val pagados = compromisosEmpresa.count { it.estado.equals("Pagado", ignoreCase = true) }
+        val pendientes = compromisosEmpresa.count { it.estado.equals("Pendiente", ignoreCase = true) }
+        val vencidos = compromisosEmpresa.count { it.estado.equals("Vencido", ignoreCase = true) }
+
+        val totalRecaudado = compromisosEmpresa
+            .filter { it.estado.equals("Pagado", ignoreCase = true) }
+            .sumOf { it.monto }
+
+        val totalCompromisos = compromisosEmpresa.size
+
+        val tasaDecimal = if (totalCompromisos > 0) {
+            (pagados.toDouble() / totalCompromisos.toDouble()) * 100.0
+        } else {
+            0.0
+        }
+
+        val tasaFormateada = String.format(Locale("es", "CL"), "%.1f%%", tasaDecimal)
+
+        return MetricasCobranza(
+            empresa = empresaFiltro,
+            pagados = pagados,
+            pendientes = pendientes,
+            vencidos = vencidos,
+            totalRecaudado = totalRecaudado,
+            tasaCobranza = tasaFormateada
+        )
+    }
+
+    fun actualizarEstadoReporteEnBD(id: Long, nuevoEstado: String, respuesta: String?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            db.actualizarEstadoReporte(id, nuevoEstado, respuesta)
+            cargarReportes() // Recarga la lista para que la interfaz se actualice al instante
+        }
     }
 }

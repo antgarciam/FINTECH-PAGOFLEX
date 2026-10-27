@@ -1,4 +1,3 @@
-
 package cl.duocuc.miregistro.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Logout
@@ -78,6 +78,8 @@ fun FormularioScreen(
     onVerCompromisos: () -> Unit,
     onVerHistorialPagos: () -> Unit,
     onVerReportes: () -> Unit,
+    onVerPanelCobranza: () -> Unit = {},
+    onCrearCompromiso: () -> Unit = {},
     onCerrarSesion: () -> Unit,
     viewModel: FormularioViewModel = viewModel()
 ) {
@@ -277,6 +279,38 @@ fun FormularioScreen(
                         onClick = {
                             scope.launch { drawerState.close() }
                             onVerUsuarios()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Crear compromiso") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.CalendarMonth,
+                                contentDescription = null
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onCrearCompromiso()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Panel de Cobranza") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.Analytics,
+                                contentDescription = null
+                            )
+                        },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerPanelCobranza()
                         },
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
@@ -618,79 +652,5 @@ fun FormularioContent(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun MensajeExito(nombre: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(Dimens.espacioMedio),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_check),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(Dimens.tamanoIcono)
-            )
-
-            Text(
-                text = stringResource(R.string.registro_exitoso, nombre),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.padding(start = Dimens.espacioChico)
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-private fun FormularioVacioPreview() {
-    MiRegistroTheme {
-        FormularioContent(
-            uiState = FormularioUiState(),
-            onNombreCambia = {},
-            onCorreoCambia = {},
-            onContrasenaCambia = {},
-            onAlternarVisibilidad = {},
-            onNivelSeleccionado = {},
-            onNoticiasCambia = {},
-            onTerminosCambia = {},
-            onRegistrar = {},
-            onLimpiar = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, heightDp = 1400, name = "Con errores")
-@Composable
-private fun FormularioConErroresPreview() {
-    MiRegistroTheme {
-        FormularioContent(
-            uiState = FormularioUiState(
-                correo = "ana@",
-                errorNombre = "El nombre es obligatorio",
-                errorCorreo = "Ingresa un correo válido",
-                errorContrasena = "Mínimo 6 caracteres",
-                errorTerminos = "Debes aceptar los términos"
-            ),
-            onNombreCambia = {},
-            onCorreoCambia = {},
-            onContrasenaCambia = {},
-            onAlternarVisibilidad = {},
-            onNivelSeleccionado = {},
-            onNoticiasCambia = {},
-            onTerminosCambia = {},
-            onRegistrar = {},
-            onLimpiar = {}
-        )
     }
 }

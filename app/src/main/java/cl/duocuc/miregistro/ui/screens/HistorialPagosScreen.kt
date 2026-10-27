@@ -16,9 +16,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,13 +32,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import cl.duocuc.miregistro.R
 import cl.duocuc.miregistro.model.ComprobantePago
+import cl.duocuc.miregistro.ui.theme.MiRegistroTheme
 import java.text.NumberFormat
 import java.util.Locale
-import androidx.compose.ui.tooling.preview.Preview
-import cl.duocuc.miregistro.ui.theme.MiRegistroTheme
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialPagosScreen(
     historial: List<ComprobantePago>,
@@ -51,184 +61,202 @@ fun HistorialPagosScreen(
     val historialFiltrado = historial.filter { comprobante ->
         val coincideEmpresa = filtroEmpresa == "Todas" || comprobante.empresa == filtroEmpresa
         val coincidePeriodo = when (filtroPeriodo) {
-            "Último mes" -> true // Lógica de filtro por fecha
+            "Último mes" -> true
             "3 meses" -> true
-            else -> true // "12 meses"
+            else -> true
         }
         coincideEmpresa && coincidePeriodo
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Historial de pagos",
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Text(
-            text = "Consulta los pagos realizados desde cualquier canal.",
-            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        // --- SECCIÓN DE FILTROS (Trello) ---
-        Text(
-            text = "Filtrar por período:",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(vertical = 4.dp)
-        ) {
-            listOf("Último mes", "3 meses", "12 meses").forEach { periodo ->
-                FilterChip(
-                    selected = filtroPeriodo == periodo,
-                    onClick = { filtroPeriodo = periodo },
-                    label = { Text(periodo) }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Historial de pagos",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onVolver) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_volver),
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
-            }
-        }
-
-        Text(
-            text = "Filtrar por empresa:",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(vertical = 4.dp)
-        ) {
-            empresasDisponibles.take(3).forEach { empresa ->
-                FilterChip(
-                    selected = filtroEmpresa == empresa,
-                    onClick = { filtroEmpresa = empresa },
-                    label = { Text(empresa) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (historialFiltrado.isEmpty()) {
-            Text(
-                text = "No se encontraron pagos en el filtro seleccionado.",
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(vertical = 16.dp)
             )
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(
-                    items = historialFiltrado,
-                    key = { it.numero }
-                ) { comprobante ->
-                    val esAnulado = comprobante.estado.equals("Anulado", ignoreCase = true)
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Consulta los pagos realizados desde cualquier canal.",
+                modifier = Modifier.padding(bottom = 12.dp),
+                color = MaterialTheme.colorScheme.onBackground
+            )
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (esAnulado) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
-                            else MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+            Text(
+                text = "Filtrar por período:",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                listOf("Último mes", "3 meses", "12 meses").forEach { periodo ->
+                    FilterChip(
+                        selected = filtroPeriodo == periodo,
+                        onClick = { filtroPeriodo = periodo },
+                        label = { Text(periodo) }
+                    )
+                }
+            }
+
+            Text(
+                text = "Filtrar por empresa:",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                empresasDisponibles.take(3).forEach { empresa ->
+                    FilterChip(
+                        selected = filtroEmpresa == empresa,
+                        onClick = { filtroEmpresa = empresa },
+                        label = { Text(empresa) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (historialFiltrado.isEmpty()) {
+                Text(
+                    text = "No se encontraron pagos en el filtro seleccionado.",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = historialFiltrado,
+                        key = { it.numero }
+                    ) { comprobante ->
+                        val esAnulado = comprobante.estado.equals("Anulado", ignoreCase = true)
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (esAnulado) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+                                else MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = comprobante.empresa,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        text = if (esAnulado) "ANULADO" else comprobante.estado.uppercase(),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (esAnulado) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
                                 Text(
-                                    text = comprobante.empresa,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = FontWeight.Bold
+                                    text = "Concepto: ${comprobante.concepto}",
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
 
-                                // Marca distintiva para Anulado vs Pagado
                                 Text(
-                                    text = if (esAnulado) "ANULADO" else comprobante.estado.uppercase(),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
+                                    text = "Cuota: ${comprobante.cuota}",
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Text(
+                                    text = "Canal de procedencia: App Móvil PagoFlex",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+
+                                Text(
+                                    text = "Fecha: ${comprobante.fechaHora}",
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Text(
+                                    text = "Folio: ${comprobante.folioCompromiso}",
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Text(
+                                    text = "Total pagado: ${formatoMoneda.format(comprobante.totalPagado)}",
+                                    style = MaterialTheme.typography.titleSmall,
                                     color = if (esAnulado) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                                 )
+
+                                Text(
+                                    text = "Comprobante: ${comprobante.numero}",
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
-
-                            Text(
-                                text = "Concepto: ${comprobante.concepto}",
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Text(
-                                text = "Cuota: ${comprobante.cuota}",
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Text(
-                                text = "Canal de procedencia: App Móvil PagoFlex", // Exigencia Trello
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-
-                            Text(
-                                text = "Fecha: ${comprobante.fechaHora}",
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Text(
-                                text = "Folio: ${comprobante.folioCompromiso}",
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            Text(
-                                text = "Total pagado: ${formatoMoneda.format(comprobante.totalPagado)}",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = if (esAnulado) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                            )
-
-                            Text(
-                                text = "Comprobante: ${comprobante.numero}",
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
                         }
                     }
                 }
             }
-        }
 
-        Button(
-            onClick = onVolver,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
-        ) {
-            Text("Volver")
+            Button(
+                onClick = onVolver,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = "Volver",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
-
-
-
-
-
-
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
@@ -246,19 +274,6 @@ fun HistorialPagosScreenPreview() {
             totalPagado = 25000,
             canal = "App Móvil PagoFlex",
             estado = "Pagado"
-        ),
-        ComprobantePago(
-            numero = "CPR-000402",
-            fechaHora = "02-09-2026 10:15",
-            empresa = "Condominio Plaza Oriente",
-            concepto = "Gasto Común Septiembre",
-            cuota = "1/12",
-            folioCompromiso = "CMP-00102",
-            monto = 80000,
-            recargoMora = 5000,
-            totalPagado = 85000,
-            canal = "Web PagoFlex",
-            estado = "Anulado"
         )
     )
 

@@ -16,8 +16,8 @@ class UsuarioDbHelper(context: Context) :
 
     companion object {
         private const val NOMBRE_BD = "miregistro.db"
-        // Versión 4: incluye avatar, RUT y contraseña
-        private const val VERSION_BD = 8
+        // Subimos a versión 9 para asegurar recreación de tabla reportes
+        private const val VERSION_BD = 9
 
         private const val TABLA_ROLES = "roles"
         private const val ROL_ID = "id_rol"
@@ -28,7 +28,7 @@ class UsuarioDbHelper(context: Context) :
         private const val USU_NOMBRE = "nombre"
         private const val USU_CORREO = "correo"
         private const val USU_RUT = "rut"
-        private const val USU_CONTRASENA = "contrasena" // Columna de contraseña
+        private const val USU_CONTRASENA = "contrasena"
         private const val USU_CIUDAD = "ciudad"
         private const val USU_ROL = "id_rol"
         private const val USU_AVATAR = "avatar"
@@ -36,7 +36,7 @@ class UsuarioDbHelper(context: Context) :
         private const val TABLA_REPORTES = "reportes"
         private const val SQL_CREAR_REPORTES =
             """
-                CREATE TABLE reportes(
+                CREATE TABLE IF NOT EXISTS reportes(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cliente_nombre TEXT NOT NULL,
                 cliente_correo TEXT NOT NULL,
@@ -98,8 +98,8 @@ class UsuarioDbHelper(context: Context) :
             folio_compromiso TEXT NOT NULL,
             monto INTEGER NOT NULL,
             recargo_mora INTEGER NOT NULL,
-             total_pagado INTEGER NOT NULL,
-             canal TEXT NOT NULL,
+            total_pagado INTEGER NOT NULL,
+            canal TEXT NOT NULL,
             estado TEXT NOT NULL,
             FOREIGN KEY (usuario_id)
             REFERENCES usuarios(id_usuario)
@@ -147,8 +147,6 @@ class UsuarioDbHelper(context: Context) :
         db.execSQL(SQL_CREAR_PAGOS)
         db.execSQL(SQL_CREAR_REPORTES)
     }
-
-
 
     override fun onUpgrade(
         db: SQLiteDatabase,
@@ -205,10 +203,14 @@ class UsuarioDbHelper(context: Context) :
         }
 
         if (oldVersion < 8) {
-            db.execSQL (SQL_CREAR_REPORTES)
+            db.execSQL(SQL_CREAR_REPORTES)
+        }
+
+        if (oldVersion < 9) {
+            db.execSQL("DROP TABLE IF EXISTS reportes")
+            db.execSQL(SQL_CREAR_REPORTES)
         }
     }
-
 
     fun listarCompromisos(usuarioId: Long): List<Compromiso> {
         val lista = mutableListOf<Compromiso>()
@@ -303,6 +305,20 @@ class UsuarioDbHelper(context: Context) :
         }
     }
 
+    fun insertarCompromiso(usuarioId: Long, compromiso: Compromiso): Long {
+        val valores = ContentValues().apply {
+            put("usuario_id", usuarioId)
+            put("empresa", compromiso.empresa)
+            put("concepto", compromiso.concepto)
+            put("cuota", compromiso.cuota)
+            put("monto", compromiso.monto)
+            put("vencimiento", compromiso.vencimiento)
+            put("estado", compromiso.estado)
+            put("folio", compromiso.folio)
+        }
+        return writableDatabase.insert("compromisos", null, valores)
+    }
+
     fun actualizarEstadoCompromiso(
         usuarioId: Long,
         compromisoId: Long,
@@ -380,6 +396,7 @@ class UsuarioDbHelper(context: Context) :
 
         return lista
     }
+
     fun listarRoles(): List<Rol> {
         val roles = mutableListOf<Rol>()
         readableDatabase.rawQuery(
@@ -455,7 +472,6 @@ class UsuarioDbHelper(context: Context) :
         return writableDatabase.update(TABLA_USUARIOS, valores, "$USU_ID = ?", arrayOf(id.toString()))
     }
 
-    // Permite cambiar la contraseña buscando por RUT
     fun actualizarContrasena(rut: String, nuevaContrasena: String): Int {
         val valores = ContentValues().apply {
             put(USU_CONTRASENA, nuevaContrasena)
@@ -529,7 +545,7 @@ class UsuarioDbHelper(context: Context) :
                         detalle = cursor.getString(cursor.getColumnIndexOrThrow("detalle")),
                         estado = cursor.getString(cursor.getColumnIndexOrThrow("estado")),
                         fechaHora = cursor.getString(cursor.getColumnIndexOrThrow("fecha_hora")),
-                        respuestaAgente = cursor.getString(cursor.getColumnIndexOrThrow("respuesta_agente"))
+                        respuestaAgente = if (cursor.isNull(cursor.getColumnIndexOrThrow("respuesta_agente"))) null else cursor.getString(cursor.getColumnIndexOrThrow("respuesta_agente"))
                     )
                 )
             }

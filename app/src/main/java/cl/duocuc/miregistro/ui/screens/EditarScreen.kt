@@ -2,152 +2,174 @@ package cl.duocuc.miregistro.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import cl.duocuc.miregistro.R
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import cl.duocuc.miregistro.ui.components.CampoTexto
-import cl.duocuc.miregistro.ui.styles.EstilosCampo
-import cl.duocuc.miregistro.ui.theme.Dimens
-
-data class ReporteProblema(
-    val numeroReporte: String,
-    val folioCompromiso: String,
-    val rutUsuario: String,
-    val motivo: String,
-    val comentario: String,
-    val estado: String
-
-)
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import cl.duocuc.miregistro.R
+import cl.duocuc.miregistro.model.Usuario
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditarScreen(
-    reporte: ReporteProblema,
+    usuarios: List<Usuario>,
     onVolver: () -> Unit,
-    onGuardarResolucion: (respuesta: String, estadoCompromiso: String, estadoReporte: String) -> Unit
+    onCambiarRol: (Usuario) -> Unit,
+    onEliminarUsuario: (Usuario) -> Unit
 ) {
-    var respuestaParaUsuario by rememberSaveable { mutableStateOf("") }
-    var estadoFinalCompromiso by rememberSaveable { mutableStateOf("Pendiente") }
-    var expandido by remember { mutableStateOf(false) }
-
-    val opcionesEstadoFinal = listOf("Anulado", "Pendiente", "Vencido")
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gestionar Reporte ${reporte.numeroReporte}")},
+                title = {
+                    Text(
+                        "Gestionar Usuarios",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
-                        Icon(painterResource(R.drawable.ic_volver), "Volver")
+                        Icon(
+                            painter = painterResource(R.drawable.ic_volver),
+                            contentDescription = "Volver"
+                        )
                     }
                 },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            onGuardarResolucion(respuestaParaUsuario, estadoFinalCompromiso, "Resuelto")
-                        },
-                        enabled = respuestaParaUsuario.isNotBlank()
-                    ) {
-                        Icon(painterResource(R.drawable.ic_check), "Resolver")
-                    }
-                }
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding)
-                .padding(Dimens.espacioPantalla)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
+                .padding(16.dp)
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(Dimens.espacioPantalla)) {
-                    Text(
-                        "Folio: ${reporte.folioCompromiso}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(Dimens.espacioChico))
-                    Text("RUT: ${reporte.rutUsuario}", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(Dimens.espacioChico))
-                    Text("Motivo: ${reporte.motivo}", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(Dimens.espacioChico))
-                    Text(
-                        "Comentario: ${reporte.comentario}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(Dimens.espacioChico))
-
-            CampoTexto(
-                valor = respuestaParaUsuario,
-                onValorCambia = { respuestaParaUsuario = it },
-                etiqueta = "Respuesta para el usuario",
-                icono = R.drawable.ic_correo
+            Text(
+                text = "Administración de cuentas y permisos de PagoFlex",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            Spacer(modifier = Modifier.height(Dimens.espacioChico))
-
-            ExposedDropdownMenuBox(
-                expanded = expandido,
-                onExpandedChange = { expandido = it }
-            ) {
-                OutlinedTextField(
-                    value = estadoFinalCompromiso,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Estado final del compromiso") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandido) },
-                    shape = EstilosCampo.forma,
-                    colors = EstilosCampo.colores(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+            if (usuarios.isEmpty()) {
+                Text(
+                    text = "No hay usuarios registrados.",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 16.dp)
                 )
-
-                ExposedDropdownMenu(
-                    expanded = expandido,
-                    onDismissRequest = { expandido = false }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    opcionesEstadoFinal.forEach { opcion ->
-                        DropdownMenuItem(
-                            text = { Text(opcion) },
-                            onClick = {
-                                estadoFinalCompromiso = opcion
-                                expandido = false
+                    items(
+                        items = usuarios,
+                        key = { it.id }
+                    ) { usuario ->
+                        val esAdmin = usuario.rolId == 2L
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = usuario.nombre,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+
+                                    Text(
+                                        text = if (esAdmin) "ADMIN / SOPORTE" else "USUARIO FINAL",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (esAdmin) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                                    )
+                                }
+
+                                Text(
+                                    text = "Correo: ${usuario.correo}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Text(
+                                    text = "RUT: ${usuario.rut}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Text(
+                                    text = "Ciudad: ${usuario.ciudad}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { onCambiarRol(usuario) },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (esAdmin) "Hacer Usuario" else "Hacer Admin")
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = { onEliminarUsuario(usuario) },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            contentColor = MaterialTheme.colorScheme.error
+                                        )
+                                    ) {
+                                        Text("Eliminar")
+                                    }
+                                }
                             }
-                        )
+                        }
                     }
                 }
             }
