@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import cl.duocuc.miregistro.model.Reporte
+import cl.duocuc.miregistro.model.Usuario
 import cl.duocuc.miregistro.ui.screens.CompromisosScreen
 import cl.duocuc.miregistro.ui.screens.ComprobantePagoScreen
 import cl.duocuc.miregistro.ui.screens.EditarScreen
@@ -27,6 +28,9 @@ import cl.duocuc.miregistro.ui.screens.RegistroScreen
 import cl.duocuc.miregistro.ui.screens.ReportesScreen
 import cl.duocuc.miregistro.ui.screens.UsuariosScreen
 import cl.duocuc.miregistro.viewmodel.UsuariosViewModel
+import kotlin.collections.emptyList
+
+
 
 @Composable
 fun AppNavegacion() {
@@ -39,7 +43,7 @@ fun AppNavegacion() {
     val compromisos by usuariosViewModel.compromisos.collectAsStateWithLifecycle()
     val comprobanteActual by usuariosViewModel.comprobanteActual.collectAsStateWithLifecycle()
     val historialPagos by usuariosViewModel.historialPagos.collectAsStateWithLifecycle()
-
+    var usuarioAEditar by remember { mutableStateOf<Usuario?>(null)}
     var reporteSeleccionado by remember { mutableStateOf<Reporte?>(null) }
 
     NavHost(navController = navController, startDestination = Ruta.Login.ruta) {
@@ -108,29 +112,31 @@ fun AppNavegacion() {
             )
         }
 
-        composable(Ruta.Formulario.ruta) {
+        composable(route = Ruta.Formulario.ruta) {
+            val compromisosDb by usuariosViewModel.compromisos.collectAsStateWithLifecycle(initialValue = emptyList())
+
             FormularioScreen(
+                compromisos = compromisosDb,
                 onRegistroExitoso = { usuario ->
                     usuariosViewModel.registrar(usuario)
-                    navController.navigate(Ruta.Perfil.ruta)
+                    navController.navigate(route = Ruta.Perfil.ruta)
                 },
                 usuarioActual = usuarioActual,
-                onVerMiPerfil = { navController.navigate(Ruta.Perfil.ruta) },
-                onVerUsuarios = { navController.navigate(Ruta.Usuarios.ruta) },
-                onVerCompromisos = { navController.navigate(Ruta.Compromisos.ruta) },
-                onVerHistorialPagos = { navController.navigate(Ruta.HistorialPagos.ruta) },
-                onVerReportes = { navController.navigate(Ruta.Reportes.ruta) },
-                onVerPanelCobranza = { navController.navigate(Ruta.PanelCobranza.ruta) },
-                onCrearCompromiso = { navController.navigate(Ruta.NuevoCompromiso.ruta) },
+                onVerMiPerfil = { navController.navigate(route = Ruta.Perfil.ruta) },
+                onVerUsuarios = { navController.navigate(route = Ruta.Usuarios.ruta) },
+                onVerCompromisos = { navController.navigate(route = Ruta.Compromisos.ruta) },
+                onVerHistorialPagos = { navController.navigate(route = Ruta.HistorialPagos.ruta) },
+                onVerReportes = { navController.navigate(route = Ruta.Reportes.ruta) },
+                onVerPanelCobranza = { navController.navigate(route = Ruta.PanelCobranza.ruta) },
+                onCrearCompromiso = { navController.navigate(route = Ruta.NuevoCompromiso.ruta) },
                 onCerrarSesion = {
                     usuariosViewModel.cerrarSesion()
-                    navController.navigate(Ruta.Login.ruta) {
-                        popUpTo(0) { inclusive = true }
+                    navController.navigate(route = Ruta.Login.ruta) {
+                        popUpTo(id = 0) { inclusive = true }
                     }
                 }
             )
         }
-
         composable("recuperar") {
             cl.duocuc.miregistro.ui.screens.RecuperarContrasenaScreen(
                 onRestablecerExitoso = { navController.popBackStack() },
@@ -152,29 +158,30 @@ fun AppNavegacion() {
             )
         }
 
-        composable(Ruta.Usuarios.ruta) {
-            UsuariosScreen(
+        composable(route = Ruta.Usuarios.ruta) {
+            EditarScreen(
                 usuarios = usuarios,
-                onVolver = { navController.navigateUp() },
-                onEditar = { navController.navigate("gestionar_usuarios") },
-                filtro = filtro,
-                onBuscar = usuariosViewModel::buscar,
-                onEliminar = usuariosViewModel::eliminar
+                onUsuarioSeleccionado = { usuario ->
+                    usuarioAEditar = usuario
+                    navController.navigate("gestionar_usuarios")
+                },
+                onVolver = { navController.navigateUp() }
             )
         }
 
-        composable("gestionar_usuarios") {
-            EditarScreen(
-                usuarios = usuarios,
-                onVolver = { navController.navigateUp() },
-                onCambiarRol = { usuario ->
-                    val nuevoRolId = if (usuario.rolId == 1L) 2L else 1L
-                    val usuarioActualizado = usuario.copy(rolId = nuevoRolId)
+        composable(route = "gestionar_usuarios") {
+            UsuariosScreen(
+                usuario = usuarioAEditar,
+                onGuardar = { usuarioActualizado ->
                     usuariosViewModel.actualizar(usuarioActualizado)
+                    navController.navigateUp()
                 },
-                onEliminarUsuario = { usuario ->
-                    usuariosViewModel.eliminar(usuario)
-                }
+                onEliminar = { usuarioAEliminar ->
+                    usuariosViewModel.eliminar(usuarioAEliminar)
+                    usuarioAEditar = null
+                    navController.navigateUp()
+                },
+                onVolver = { navController.navigateUp() }
             )
         }
 

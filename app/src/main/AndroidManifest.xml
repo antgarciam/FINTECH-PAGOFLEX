@@ -2,25 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- NUEVO (Permisos): PASO 1 de 4 -> DECLARAR lo que la app necesita.
-         Sin esta línea, Android NI SIQUIERA muestra el diálogo al pedir el permiso. -->
 
-    <!-- NUEVO (Cámara): permiso PELIGROSO (dangerous): además de declararlo
-         hay que PEDIRLO al usuario mientras la app se ejecuta. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- NUEVO (Galería): permiso PELIGROSO para leer las fotos del teléfono (la galería).
-         Android 13+ (API 33) usa READ_MEDIA_IMAGES.
-         Android 12 o menos usa READ_EXTERNAL_STORAGE; maxSdkVersion="32" hace que
-         en equipos nuevos este permiso antiguo ni siquiera se declare. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-
-    <!-- NUEVO (Cámara): la app USA la cámara, pero no es obligatoria (required="false").
-         Al declarar el permiso CAMERA, Google Play supondría que la cámara es obligatoria
-         y ocultaría la app en equipos sin cámara. Esta línea lo evita. -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />

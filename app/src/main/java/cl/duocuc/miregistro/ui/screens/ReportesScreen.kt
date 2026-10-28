@@ -1,5 +1,10 @@
 package cl.duocuc.miregistro.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +29,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -40,14 +46,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cl.duocuc.miregistro.R
 import cl.duocuc.miregistro.model.Reporte
+import cl.duocuc.miregistro.permisos.NotificacionHelper
 import cl.duocuc.miregistro.viewmodel.UsuariosViewModel
 import kotlinx.coroutines.launch
 
@@ -205,14 +213,39 @@ private fun ReportesAgenteView(
     onVolver: () -> Unit,
     onAtenderReporte: (Reporte) -> Unit
 ) {
+    val context = LocalContext.current
     val reportes by viewModel.reportes.collectAsStateWithLifecycle()
     var filtroEstado by remember { mutableStateOf("Todos") }
+
+    val pedirPermisoNotificacion = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        if (concedido) {
+            NotificacionHelper.enviarNotificacionDescuento(context)
+        }
+    }
+
+    fun enviarPromocionGlobal() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val tienePermiso = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (tienePermiso) {
+                NotificacionHelper.enviarNotificacionDescuento(context)
+            } else {
+                pedirPermisoNotificacion.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        } else {
+            NotificacionHelper.enviarNotificacionDescuento(context)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.cargarReportes()
     }
 
-    // Filtrado en tiempo real
     val reportesFiltrados = reportes.filter { reporte ->
         if (filtroEstado == "Todos") true
         else reporte.estado.equals(filtroEstado, ignoreCase = true)
@@ -244,6 +277,19 @@ private fun ReportesAgenteView(
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
+            // Botón de Agente para emitir la notificación
+            OutlinedButton(
+                onClick = { enviarPromocionGlobal() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Text("📢 Emitir Notificación de Promoción (20% Desc.)")
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             // Filtros rápidos por estado
             Text("Filtrar por estado:", style = MaterialTheme.typography.labelMedium)
             Row(
@@ -272,7 +318,6 @@ private fun ReportesAgenteView(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(reportesFiltrados) { reporte ->
-                        // Alerta visual de color rojo si el reporte está en estado 'En revisión' / 'Abierto'
                         val esUrgente = reporte.estado.contains("revisión", ignoreCase = true) || reporte.estado.contains("Abierto", ignoreCase = true)
 
                         Card(
@@ -313,7 +358,6 @@ private fun ReportesAgenteView(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                // Botón para pasar a 'En gestión' o Atender
                                 Button(
                                     onClick = { onAtenderReporte(reporte) },
                                     colors = ButtonDefaults.buttonColors(

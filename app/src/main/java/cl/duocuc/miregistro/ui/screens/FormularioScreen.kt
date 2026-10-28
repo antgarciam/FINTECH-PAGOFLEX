@@ -56,7 +56,9 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Wallet
+import androidx.compose.material.icons.outlined.Warning
 import cl.duocuc.miregistro.R
+import cl.duocuc.miregistro.model.Compromiso
 import cl.duocuc.miregistro.model.FormularioUiState
 import cl.duocuc.miregistro.model.NivelExperiencia
 import cl.duocuc.miregistro.model.Usuario
@@ -71,6 +73,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun FormularioScreen(
+    compromisos: List<Compromiso> = emptyList(),
     onRegistroExitoso: (Usuario) -> Unit,
     usuarioActual: Usuario?,
     onVerMiPerfil: () -> Unit,
@@ -251,10 +254,10 @@ fun FormularioScreen(
                     )
 
                     NavigationDrawerItem(
-                        label = { Text("Reportar incidencia") },
+                        label = { Text(if (usuarioActual.rolId == 2L) "Gestionar reportes" else "Reportar incidencia") },
                         icon = {
                             Icon(
-                                Icons.Outlined.AccountCircle,
+                                Icons.Outlined.Warning,
                                 contentDescription = null
                             )
                         }, selected = false,
@@ -346,6 +349,7 @@ fun FormularioScreen(
         }
     ) {
         FormularioContent(
+            compromisos = compromisos,
             uiState = uiState,
             onNombreCambia = viewModel::onNombreCambia,
             onCorreoCambia = viewModel::onCorreoCambia,
@@ -374,6 +378,7 @@ fun FormularioScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormularioContent(
+    compromisos: List<Compromiso> = emptyList(),
     uiState: FormularioUiState,
     onNombreCambia: (String) -> Unit,
     onCorreoCambia: (String) -> Unit,
@@ -390,71 +395,9 @@ fun FormularioContent(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     onVerMiPerfil: () -> Unit = {}
 ) {
-    var mostrarDetallePago by remember { mutableStateOf(false) }
-    var cuentaPagadaExitosa by remember { mutableStateOf(false) }
-
-    if (mostrarDetallePago) {
-        AlertDialog(
-            onDismissRequest = { mostrarDetallePago = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = MaterialTheme.colorScheme.onSurface,
-            title = {
-                Text("Detalle de cuenta pendiente")
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        "Empresa: Club Deportivo Los Halcones",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text("Concepto: Cuota social octubre (10/12)")
-                    Text(
-                        "Monto original: $15.000",
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        "Recargo por atraso: $2.000 (RN-03)",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                    Text(
-                        "Total a pagar: $17.000",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        mostrarDetallePago = false
-                        cuentaPagadaExitosa = true
-                    }
-                ) {
-                    Text(
-                        "Pagar cuenta ($17.000)",
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { mostrarDetallePago = false }
-                ) {
-                    Text(
-                        "Cancelar",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        )
-    }
+    val deudasPendientes = compromisos.filter { it.estado.equals("Pendiente", ignoreCase = true) || it.estado.equals("Vencido", ignoreCase = true) }
+    val cantidadVencidos = deudasPendientes.count { it.estado.equals("Vencido", ignoreCase = true) }
+    val totalDeuda = deudasPendientes.sumOf { it.monto }
 
     Scaffold(
         topBar = {
@@ -491,136 +434,20 @@ fun FormularioContent(
             ImagenEncabezado(
                 imagen = R.drawable.banner_registro,
                 descripcion = "Banner financiero PagoFlex",
-                titulo = "$ 535.000",
-                subtitulo = "Próximo vencimiento: 05-10-2026"
+                titulo = "$ $totalDeuda",
+                subtitulo = if (deudasPendientes.isNotEmpty()) "Próximo vencimiento: ${deudasPendientes.first().vencimiento}" else "Todo al día"
             )
 
             Column(
                 modifier = Modifier.padding(Dimens.espacioPantalla),
                 verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(Dimens.espacioMedio),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_persona),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer
-                        )
-
-                        Text(
-                            text = "Tienes 1 compromiso de pago vencido.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(start = Dimens.espacioChico)
-                        )
-                    }
-                }
-
-                TarjetaSeccion(titulo = "Cuentas del Mes") {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
-                    ) {
-                        if (!cuentaPagadaExitosa) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surface,
-                                    contentColor = MaterialTheme.colorScheme.onSurface
-                                ),
-                                elevation = CardDefaults.cardElevation(
-                                    defaultElevation = 2.dp
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(Dimens.espacioMedio)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            "Club Los Halcones",
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            "$17.000",
-                                            color = MaterialTheme.colorScheme.error,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-
-                                    Text(
-                                        "Cuota 10/12 · Vence: 05-10-2026 (Vencida)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    BotonPrincipal(
-                                        texto = "Ver detalle para pagar",
-                                        onClick = { mostrarDetallePago = true },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-                        }
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.onSurface
-                            ),
-                            elevation = CardDefaults.cardElevation(
-                                defaultElevation = 2.dp
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(Dimens.espacioMedio)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        "Plaza Oriente",
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        "$520.000",
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-
-                                Text(
-                                    "Arriendo octubre · Vence: 10-10-2026",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (cuentaPagadaExitosa) {
+                if (cantidadVencidos > 0) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
                     ) {
                         Row(
@@ -628,17 +455,71 @@ fun FormularioContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_check),
+                                painter = painterResource(R.drawable.ic_persona), // Puedes cambiar por ic_warning si tienes
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                tint = MaterialTheme.colorScheme.onErrorContainer
                             )
 
                             Text(
-                                text = "¡Pago exitoso! Comprobante generado: CPR-000402",
+                                text = "Tienes $cantidadVencidos compromiso(s) de pago vencido(s).",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.padding(start = Dimens.espacioChico)
                             )
+                        }
+                    }
+                }
+
+                TarjetaSeccion(titulo = "Cuentas del Mes") {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
+                    ) {
+                        if (deudasPendientes.isEmpty()) {
+                            Text(
+                                text = "No tienes deudas pendientes actualmente.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(Dimens.espacioMedio)
+                            )
+                        } else {
+                            deudasPendientes.forEach { compromiso ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    elevation = CardDefaults.cardElevation(
+                                        defaultElevation = 2.dp
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(Dimens.espacioMedio)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                compromiso.empresa,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                "$${compromiso.monto}",
+                                                fontWeight = FontWeight.Bold,
+                                                color = if(compromiso.estado == "Vencido") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
+                                        Text(
+                                            "${compromiso.concepto} · Vence: ${compromiso.vencimiento} (${compromiso.estado})",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

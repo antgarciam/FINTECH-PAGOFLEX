@@ -1,6 +1,7 @@
 package cl.duocuc.miregistro.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +51,7 @@ fun RecuperarContrasenaScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(Dimens.espacioPantalla)
             .imePadding()
             .verticalScroll(rememberScrollState()),

@@ -317,13 +317,11 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         cargarReportes()
     }
 
-    // --- OPERACIONES DE COMPROMISOS (Trello) ---
-
     fun crearNuevoCompromiso(rut: String, concepto: String, monto: Int, vencimiento: String): Boolean {
-        val usuario = _usuarios.value.firstOrNull {
+        val usuarioDestino = _usuarios.value.firstOrNull {
             it.rut.replace(".", "").replace("-", "").equals(rut.replace(".", "").replace("-", ""), ignoreCase = true)
         }
-        val usuarioId = usuario?.id ?: usuarioActual.value?.id ?: return false
+        val usuarioDestinoId = usuarioDestino?.id ?: return false
 
         val nuevoCompromiso = Compromiso(
             id = 0L,
@@ -336,8 +334,12 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
             folio = "PF-${(1000..9999).random()}"
         )
 
-        val exito = db.actualizarEstadoCompromiso(usuarioId, nuevoCompromiso.id, "Pendiente")
-        cargarCompromisos(usuarioId)
+        val idInsertado = db.insertarCompromiso(usuarioDestinoId, nuevoCompromiso)
+        if (idInsertado == -1L) return false
+
+        val idSesionActual = usuarioActual.value?.id ?: 1L
+        cargarCompromisos(idSesionActual)
+
         return true
     }
 
@@ -353,8 +355,6 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         }
         return actualizado
     }
-
-    // --- PANEL DE COBRANZA MENSUAL (Trello) ---
 
     data class MetricasCobranza(
         val empresa: String,
@@ -401,7 +401,7 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
     fun actualizarEstadoReporteEnBD(id: Long, nuevoEstado: String, respuesta: String?) {
         viewModelScope.launch(Dispatchers.IO) {
             db.actualizarEstadoReporte(id, nuevoEstado, respuesta)
-            cargarReportes() // Recarga la lista para que la interfaz se actualice al instante
+            cargarReportes()
         }
     }
 }
