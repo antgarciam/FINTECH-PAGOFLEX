@@ -1,407 +1,99 @@
 package cl.duocuc.miregistro.viewmodel
 
 import android.app.Application
-import android.graphics.Bitmap
-import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import cl.duocuc.miregistro.data.ConvertidorImagen
+import cl.duocuc.miregistro.api.RegistroRequest
+import cl.duocuc.miregistro.api.RetrofitClient
+import cl.duocuc.miregistro.data.ReporteRepository
 import cl.duocuc.miregistro.data.SesionPreferencias
-import cl.duocuc.miregistro.data.UsuarioDbHelper
-import cl.duocuc.miregistro.model.Rol
-import cl.duocuc.miregistro.model.Usuario
-import cl.duocuc.miregistro.model.Compromiso
-import cl.duocuc.miregistro.model.ComprobantePago
+import cl.duocuc.miregistro.data.UsuarioRepository
 import cl.duocuc.miregistro.model.Reporte
-import kotlinx.coroutines.Dispatchers
+import cl.duocuc.miregistro.model.Usuario
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class UsuariosViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val db = UsuarioDbHelper(application)
-
-    private val _comprobanteActual = MutableStateFlow<ComprobantePago?>(null)
-    val comprobanteActual: StateFlow<ComprobantePago?> = _comprobanteActual.asStateFlow()
-
-    private val _historialPagos = MutableStateFlow<List<ComprobantePago>>(emptyList())
-    val historialPagos: StateFlow<List<ComprobantePago>> = _historialPagos.asStateFlow()
-
-    private val _compromisos = MutableStateFlow<List<Compromiso>>(emptyList())
-    val compromisos: StateFlow<List<Compromiso>> = _compromisos.asStateFlow()
-
-    private val _comprobantesCargados = MutableStateFlow(false)
-
-    private fun cargarDatosFinancieros(usuarioId: Long) {
-        db.crearCompromisosIniciales(usuarioId)
-        _compromisos.value = db.listarCompromisos(usuarioId)
-        _historialPagos.value = db.listarPagos(usuarioId)
-        _comprobantesCargados.value = true
-    }
-
-    fun cargarCompromisos(usuarioId: Long) {
-        _compromisos.value = db.listarCompromisos(usuarioId)
-    }
-
-    fun puedePagar(compromiso: Compromiso): Boolean {
-        if (compromiso.estado.equals("Vencido", ignoreCase = true)) {
-            return true
-        }
-
-        if (!compromiso.estado.equals("Pendiente", ignoreCase = true)) {
-            return false
-        }
-
-        val tieneCuotaVencida = _compromisos.value.any { otraCuota ->
-            otraCuota.empresa.equals(compromiso.empresa, ignoreCase = true) &&
-                    otraCuota.estado.equals("Vencido", ignoreCase = true)
-        }
-
-        return !tieneCuotaVencida
-    }
-
-    fun pagarCompromiso(compromiso: Compromiso): ComprobantePago? {
-        val usuario = _usuarioActual.value ?: return null
-
-        if (!puedePagar(compromiso)) return null
-
-        val compromisoActual = _compromisos.value
-            .find { it.id == compromiso.id }
-            ?: return null
-
-        val fechaHora = SimpleDateFormat(
-            "dd-MM-yyyy HH:mm",
-            Locale("es", "CL")
-        ).format(Date())
-
-        val comprobante = ComprobantePago(
-            numero = "PF-PAGO-${System.currentTimeMillis()}",
-            fechaHora = fechaHora,
-            empresa = compromisoActual.empresa,
-            concepto = compromisoActual.concepto,
-            cuota = compromisoActual.cuota,
-            folioCompromiso = compromisoActual.folio,
-            monto = compromisoActual.monto,
-            recargoMora = 0,
-            totalPagado = compromisoActual.monto,
-            canal = "Aplicación PagoFlex",
-            estado = "Confirmado"
-        )
-
-        val pagoId = db.insertarPago(usuario.id, comprobante)
-        if (pagoId == -1L) return null
-
-        val actualizado = db.actualizarEstadoCompromiso(
-            usuarioId = usuario.id,
-            compromisoId = compromisoActual.id,
-            nuevoEstado = "Pagado"
-        )
-
-        if (!actualizado) return null
-
-        _compromisos.value = db.listarCompromisos(usuario.id)
-        _historialPagos.value = db.listarPagos(usuario.id)
-        _comprobanteActual.value = comprobante
-
-        return comprobante
-    }
-
     private val sesion = SesionPreferencias(application)
+    private val userRepo = UsuarioRepository(RetrofitClient.authApi, sesion)
+    private val repRepo = ReporteRepository(RetrofitClient.reportesApi)
 
-    private val _filtro = MutableStateFlow("")
-    val filtro: StateFlow<String> = _filtro.asStateFlow()
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading = _isLoading.asStateFlow()
+    private val _errorGeneral = MutableStateFlow<String?>(null)
+    val errorGeneral = _errorGeneral.asStateFlow()
+    private val _errorRut = MutableStateFlow<String?>(null)
+    val errorRut = _errorRut.asStateFlow()
+    private val _errorNombre = MutableStateFlow<String?>(null)
+    val errorNombre = _errorNombre.asStateFlow()
+    private val _errorCorreo = MutableStateFlow<String?>(null)
+    val errorCorreo = _errorCorreo.asStateFlow()
+    private val _errorPassword = MutableStateFlow<String?>(null)
+    val errorPassword = _errorPassword.asStateFlow()
+    private val _loginExitoso = MutableStateFlow(false)
+    val loginExitoso = _loginExitoso.asStateFlow()
+    private val _registroExitoso = MutableStateFlow(false)
+    val registroExitoso = _registroExitoso.asStateFlow()
 
-    private val _usuarios = MutableStateFlow(db.listarUsuarios())
-    val usuarios: StateFlow<List<Usuario>> = _usuarios.asStateFlow()
-
-    val roles: List<Rol> = db.listarRoles()
-
-    private val _usuarioActual = MutableStateFlow(db.buscarPorId(sesion.leer()))
-    val usuarioActual: StateFlow<Usuario?> = _usuarioActual.asStateFlow()
-
-    private fun recargar() {
-        val texto = _filtro.value.trim()
-        _usuarios.value = if (texto.isEmpty()) db.listarUsuarios() else db.buscarUsuarios(texto)
-    }
-
-    fun buscar(texto: String) {
-        _filtro.value = texto
-        recargar()
-    }
-
-    fun obtener(id: Long): Usuario? = db.buscarPorId(id)
-
-    fun registrar(usuario: Usuario) {
-        val id = db.insertarUsuario(usuario)
-        _usuarioActual.value = db.buscarPorId(id)
-        sesion.guardar(id)
-        recargar()
-        cargarDatosFinancieros(id)
-    }
-
-    fun validarRegistro(usuario: Usuario): String? {
-        if (!validarRutChileno(usuario.rut)) {
-            return "El RUT ingresado no es válido."
-        }
-
-        if (db.existeRut(usuario.rut)) {
-            return "Ya existe una cuenta registrada con ese RUT."
-        }
-
-        if (db.existeCorreo(usuario.correo)) {
-            return "Ya existe una cuenta registrada con ese correo."
-        }
-
-        return null
-    }
-
-    fun actualizar(editado: Usuario) {
-        db.actualizarUsuario(editado)
-        if (_usuarioActual.value?.id == editado.id) _usuarioActual.value = db.buscarPorId(editado.id)
-        recargar()
-    }
-
-    fun eliminar(usuario: Usuario) {
-        db.eliminarUsuario(usuario.id)
-        if (_usuarioActual.value?.id == usuario.id) cerrarSesion()
-        recargar()
-    }
-
-    fun cambiarAvatarDesdeCamara(foto: Bitmap) {
-        guardarAvatar(ConvertidorImagen.aBytes(foto))
-    }
-
-    fun cambiarAvatarDesdeGaleria(uri: Uri) {
-        val imagen = ConvertidorImagen.desdeUri(getApplication(), uri) ?: return
-        guardarAvatar(ConvertidorImagen.aBytes(imagen))
-    }
-
-    private fun guardarAvatar(bytes: ByteArray) {
-        val usuario = _usuarioActual.value ?: return
-        db.actualizarAvatar(usuario.id, bytes)
-        _usuarioActual.value = db.buscarPorId(usuario.id)
-        recargar()
-    }
-
-    fun cerrarSesion() {
-        _usuarioActual.value = null
-        sesion.borrar()
-    }
-
-    override fun onCleared() {
-        db.close()
-        super.onCleared()
-    }
-
-    fun validarRutChileno(rutCompleto: String): Boolean {
-        val rutLimpio = rutCompleto
-            .replace(".", "")
-            .replace("-", "")
-            .trim()
-            .uppercase()
-
-        if (rutLimpio.length < 2) return false
-
-        val cuerpo = rutLimpio.dropLast(1)
-        val dvRecibido = rutLimpio.last()
-
-        if (!cuerpo.all { it.isDigit() }) return false
-        if (!dvRecibido.isDigit() && dvRecibido != 'K') return false
-
-        var suma = 0
-        var multiplicador = 2
-
-        for (i in cuerpo.length - 1 downTo 0) {
-            suma += cuerpo[i].digitToInt() * multiplicador
-            multiplicador = if (multiplicador == 7) {
-                2
-            } else {
-                multiplicador + 1
-            }
-        }
-
-        val resultado = 11 - (suma % 11)
-
-        val dvEsperado = when (resultado) {
-            11 -> '0'
-            10 -> 'K'
-            else -> resultado.digitToChar()
-        }
-
-        return dvEsperado == dvRecibido
-    }
-
-    fun iniciarSesion(rut: String) {
-        val rutLimpio = rut
-            .replace(".", "")
-            .replace("-", "")
-            .trim()
-
-        val usuarioEncontrado = db.listarUsuarios().find { usuario ->
-            usuario.rut
-                .replace(".", "")
-                .replace("-", "")
-                .trim()
-                .equals(rutLimpio, ignoreCase = true)
-        }
-
-        if (usuarioEncontrado != null) {
-            _usuarioActual.value = usuarioEncontrado
-            sesion.guardar(usuarioEncontrado.id)
-            recargar()
-            cargarDatosFinancieros(usuarioEncontrado.id)
-        }
-    }
-
-    fun buscarPorRut(rutIngresado: String): Usuario? {
-        val rutLimpio = rutIngresado
-            .replace(".", "")
-            .replace("-", "")
-            .trim()
-            .uppercase()
-
-        return db.listarUsuarios().find { usuario ->
-            usuario.rut
-                .replace(".", "")
-                .replace("-", "")
-                .trim()
-                .uppercase() == rutLimpio
-        }
-    }
-
-    fun actualizarContrasena(rutIngresado: String, nuevaContrasena: String): Boolean {
-        val rutLimpioInput = rutIngresado.replace(".", "").replace("-", "").trim()
-
-        val usuario = _usuarios.value.find { user ->
-            user.rut.replace(".", "").replace("-", "").trim().equals(rutLimpioInput, ignoreCase = true)
-        } ?: return false
-
-        val filasAfectadas = db.actualizarContrasena(usuario.rut, nuevaContrasena)
-
-        if (filasAfectadas > 0) {
-            recargar()
-            return true
-        }
-
-        return false
-    }
-
+    private val _usuarioActual = MutableStateFlow<Usuario?>(null)
+    val usuarioActual = _usuarioActual.asStateFlow()
     private val _reportes = MutableStateFlow<List<Reporte>>(emptyList())
-    val reportes: StateFlow<List<Reporte>> = _reportes.asStateFlow()
+    val reportes = _reportes.asStateFlow()
 
     init {
-        cargarReportes()
+        // Usuario de prueba para ver el panel de Agente
+        _usuarioActual.value = Usuario(nombre = "Agente Test", correo = "a@a.cl", ciudad = "Santiago", rolId = 2L)
+
+        // ⚠️ SI SOLO QUIERES PROBAR EL LOGIN, COMENTA ESTA LÍNEA:
+        // cargarReportes()
     }
 
     fun cargarReportes() {
-        _reportes.value = db.listarReportes()
+        viewModelScope.launch {
+            _isLoading.value = true
+            repRepo.listarReportes().onSuccess { _reportes.value = it }.onFailure { _errorGeneral.value = it.message }
+            _isLoading.value = false
+        }
     }
 
-    fun guardarReporteEnBD(motivo: String, detalle: String) {
-        val usuario = _usuarioActual.value
-        val nuevoReporte = Reporte(
-            clienteNombre = usuario?.nombre ?: "Usuario anónimo",
-            clienteCorreo = usuario?.correo ?: "sin_correo@pago.cl",
-            motivo = motivo,
-            detalle = detalle,
-            fechaHora = "26-10-2026 13:00",
-            estado = "En revisión"
-        )
-
-        db.insertarReporte(nuevoReporte)
-        cargarReportes()
+    fun ejecutarLogin(rut: String, contrasena: String) {
+        _errorGeneral.value = null
+        viewModelScope.launch {
+            _isLoading.value = true
+            userRepo.login(rut, contrasena).onSuccess { _loginExitoso.value = true }.onFailure { _errorGeneral.value = it.message }
+            _isLoading.value = false
+        }
     }
 
-    fun crearNuevoCompromiso(rut: String, concepto: String, monto: Int, vencimiento: String): Boolean {
-        val usuarioDestino = _usuarios.value.firstOrNull {
-            it.rut.replace(".", "").replace("-", "").equals(rut.replace(".", "").replace("-", ""), ignoreCase = true)
+    fun ejecutarRegistro(nombre: String, rut: String, correo: String, ciudad: String, pass: String, confirmPass: String) {
+        _errorRut.value = null; _errorNombre.value = null; _errorCorreo.value = null; _errorPassword.value = null; _errorGeneral.value = null
+        var esValido = true
+
+        if (nombre.isBlank() || nombre.any { it.isDigit() }) { _errorNombre.value = "Nombre inválido"; esValido = false }
+        if (!rut.matches(Regex("^[0-9]{1,2}\\.?[0-9]{3}\\.?[0-9]{3}-?[0-9kK]{1}$"))) { _errorRut.value = "RUT inválido (ej: 12345678-9)"; esValido = false }
+        if (!correo.contains("@")) { _errorCorreo.value = "Correo inválido"; esValido = false }
+
+        val errorPass = validarContrasena(pass)
+        if (errorPass != null) { _errorPassword.value = errorPass; esValido = false }
+        else if (pass != confirmPass) { _errorPassword.value = "Las claves no coinciden"; esValido = false }
+
+        if (!esValido) return
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            val req = RegistroRequest(rut, nombre, correo, pass, ciudad, "pregunta", "respuesta")
+            userRepo.registrar(req).onSuccess { _registroExitoso.value = true }.onFailure { _errorGeneral.value = it.message }
+            _isLoading.value = false
         }
-        val usuarioDestinoId = usuarioDestino?.id ?: return false
-
-        val nuevoCompromiso = Compromiso(
-            id = 0L,
-            empresa = "Altos del Maipo",
-            concepto = concepto,
-            cuota = "1 de 1",
-            monto = monto,
-            vencimiento = vencimiento,
-            estado = "Pendiente",
-            folio = "PF-${(1000..9999).random()}"
-        )
-
-        val idInsertado = db.insertarCompromiso(usuarioDestinoId, nuevoCompromiso)
-        if (idInsertado == -1L) return false
-
-        val idSesionActual = usuarioActual.value?.id ?: 1L
-        cargarCompromisos(idSesionActual)
-
-        return true
     }
 
-    fun anularCompromiso(compromisoId: Long, motivo: String): Boolean {
-        if (motivo.isBlank()) return false
-        val compromiso = _compromisos.value.firstOrNull { it.id == compromisoId } ?: return false
-        if (compromiso.estado.equals("Pagado", ignoreCase = true)) return false
-
-        val usuarioId = usuarioActual.value?.id ?: 1L
-        val actualizado = db.actualizarEstadoCompromiso(usuarioId, compromisoId, "Anulado")
-        if (actualizado) {
-            cargarCompromisos(usuarioId)
-        }
-        return actualizado
-    }
-
-    data class MetricasCobranza(
-        val empresa: String,
-        val pagados: Int,
-        val pendientes: Int,
-        val vencidos: Int,
-        val totalRecaudado: Int,
-        val tasaCobranza: String
-    )
-
-    fun obtenerMetricasCobranza(empresaFiltro: String = "Altos del Maipo"): MetricasCobranza {
-        val compromisosEmpresa = _compromisos.value.filter {
-            it.empresa.equals(empresaFiltro, ignoreCase = true)
-        }
-
-        val pagados = compromisosEmpresa.count { it.estado.equals("Pagado", ignoreCase = true) }
-        val pendientes = compromisosEmpresa.count { it.estado.equals("Pendiente", ignoreCase = true) }
-        val vencidos = compromisosEmpresa.count { it.estado.equals("Vencido", ignoreCase = true) }
-
-        val totalRecaudado = compromisosEmpresa
-            .filter { it.estado.equals("Pagado", ignoreCase = true) }
-            .sumOf { it.monto }
-
-        val totalCompromisos = compromisosEmpresa.size
-
-        val tasaDecimal = if (totalCompromisos > 0) {
-            (pagados.toDouble() / totalCompromisos.toDouble()) * 100.0
-        } else {
-            0.0
-        }
-
-        val tasaFormateada = String.format(Locale("es", "CL"), "%.1f%%", tasaDecimal)
-
-        return MetricasCobranza(
-            empresa = empresaFiltro,
-            pagados = pagados,
-            pendientes = pendientes,
-            vencidos = vencidos,
-            totalRecaudado = totalRecaudado,
-            tasaCobranza = tasaFormateada
-        )
-    }
-
-    fun actualizarEstadoReporteEnBD(id: Long, nuevoEstado: String, respuesta: String?) {
-        viewModelScope.launch(Dispatchers.IO) {
-            db.actualizarEstadoReporte(id, nuevoEstado, respuesta)
-            cargarReportes()
-        }
+    private fun validarContrasena(pass: String): String? {
+        if (pass.length < 8) return "Mínimo 8 caracteres"
+        if (!pass.any { it.isUpperCase() }) return "Falta mayúscula"
+        if (!pass.any { it.isLowerCase() }) return "Falta minúscula"
+        if (!pass.any { it.isDigit() }) return "Falta número"
+        if (!pass.any { !it.isLetterOrDigit() }) return "Falta símbolo (@, #, $)"
+        return null
     }
 }
