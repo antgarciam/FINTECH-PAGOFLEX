@@ -5,11 +5,26 @@ import retrofit2.Response
 import retrofit2.http.*
 
 data class LoginRequest(val rut: String, val contrasena: String)
-data class LoginResponse(val token: String, val rol: String, val idUsuario: Long)
+
+// 👇 Alineado con el backend (devuelve id y rolId)
+data class LoginResponse(
+    val token: String,
+    val id: Long,
+    val nombre: String,
+    val correo: String,
+    val rolId: Int,
+    val ciudad: String
+)
+
+// 👇 Este estaba perfecto
 data class RegistroRequest(
-    val rut: String, val nombre: String, val correo: String,
-    val contrasena: String, val ciudad: String,
-    val preguntaSeguridad: String, val respuestaSeguridad: String
+    val nombre: String,
+    val correo: String,
+    val rut: String,
+    val contrasena: String,
+    val ciudad: String,
+    val preguntaSeguridad: String,
+    val respuestaSeguridad: String
 )
 
 interface AuthApiService {
@@ -28,7 +43,14 @@ interface ReportesApiService {
     suspend fun crearReporte(@Body reporte: Reporte): Response<Reporte>
 }
 
-// Los otros 3 microservicios (listos para cuando los necesiten)
-interface UsuariosApiService
-interface PagosApiService
-interface NotificacionesApiService
+interface UsuariosApiService {
+    // Aquí irán tus endpoints de usuarios (GET /api/usuarios, etc.)
+}
+
+interface PagosApiService {
+    // Aquí irán tus endpoints de pagos (GET /api/pagos/cuotas/{id}, etc.)
+}
+
+interface NotificacionesApiService {
+    // Aquí irán tus endpoints de notificaciones
+}

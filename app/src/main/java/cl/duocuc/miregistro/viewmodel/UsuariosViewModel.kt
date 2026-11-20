@@ -96,4 +96,16 @@ class UsuariosViewModel(application: Application) : AndroidViewModel(application
         if (!pass.any { !it.isLetterOrDigit() }) return "Falta símbolo (@, #, $)"
         return null
     }
+
+    fun obtenerRolActual(): String? {
+        return sesion.leerRol()
+    }
+
+    fun sesionBorrar() {
+        sesion.borrar()
+        _loginExitoso.value = false
+        _registroExitoso.value = false
+    }
+
+
 }

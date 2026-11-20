@@ -8,6 +8,9 @@ class SesionPreferencias(context: Context) {
 
     fun guardarToken(token: String) { prefs.edit { putString("jwt_token", token) } }
     fun guardarRol(rol: String) { prefs.edit { putString("rol_usuario", rol) } }
+
     fun leerToken(): String? = prefs.getString("jwt_token", null)
+    fun leerRol(): String? = prefs.getString("rol_usuario", null)
+
     fun borrar() { prefs.edit { clear() } }
 }
