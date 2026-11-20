@@ -16,6 +16,6 @@ fun PanelCobranzaScreen(metricas: MetricasCobranza, onVolver: () -> Unit) {
         Text("Tasa: ${metricas.tasaCobranza}")
         Text("Pagados: ${metricas.pagados} | Pendientes: ${metricas.pendientes} | Vencidos: ${metricas.vencidos}")
         Spacer(modifier = Modifier.weight(1f))
-        Button(onClick = onVolver, modifier = Modifier.fillMaxWidth()) { Text("Volver") }
+        Button(onClick = onVolver, modifier = Modifier.fillMaxWidth()) { Text("Crear compromiso con cuotas") }
     }
 }
