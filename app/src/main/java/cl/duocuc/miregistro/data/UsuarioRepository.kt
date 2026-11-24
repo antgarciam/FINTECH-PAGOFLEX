@@ -18,15 +18,20 @@ class UsuarioRepository(
     private val usuariosApi: UsuariosApiService,
     private val sesion: SesionPreferencias
 ) {
-    private fun extraerError(response: Response<*>, defecto: String): String {
-        return try {
-            val raw = response.errorBody()?.string()
-            if (!raw.isNullOrBlank()) {
-                val json = JSONObject(raw)
-                json.optString("error", json.optString("message", defecto))
-            } else defecto
+    private fun extraerError(response: Response<*>, porDefecto: String): String {
+        val raw = try {
+            response.errorBody()?.string().orEmpty()
         } catch (_: Exception) {
-            defecto
+            ""
+        }
+        val mensajeJson = Regex("\"(?:mensaje|message|error)\"\\s*:\\s*\"([^\"]+)\"")
+            .find(raw)
+            ?.groupValues
+            ?.getOrNull(1)
+        return when {
+            !mensajeJson.isNullOrBlank() -> "$mensajeJson (HTTP ${response.code()})"
+            raw.isNotBlank() -> "${raw.take(120)} (HTTP ${response.code()})"
+            else -> "$porDefecto (HTTP ${response.code()})"
         }
     }
 
